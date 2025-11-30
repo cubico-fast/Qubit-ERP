@@ -863,7 +863,7 @@
   border-color: #00ff00 !important;
 }
 
-/* Borde blanco simple para elementos seleccionados del menú en modo hacker */
+/* Estilo elegante para elementos seleccionados del menú en modo hacker */
 .theme-hacker nav a.bg-white,
 .theme-hacker nav a[class*="bg-white"],
 .theme-hacker nav a[class*="bg-primary"],
@@ -874,27 +874,67 @@
 .theme-hacker nav .bg-primary-600,
 .theme-hacker aside nav a[class*="shadow-lg"],
 .theme-hacker aside nav button[class*="shadow-lg"] {
-  border: 2px solid #ffffff !important;
-  background-color: #000000 !important;
+  border: 1px solid #00ff00 !important;
+  background-color: rgba(0, 255, 0, 0.1) !important;
   color: #00ff00 !important;
-  box-shadow: none !important;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 0 10px rgba(0, 255, 0, 0.1) !important;
+  position: relative !important;
+}
+
+/* Outline blanco sutil alrededor del elemento seleccionado */
+.theme-hacker nav a.bg-white::after,
+.theme-hacker nav a[class*="bg-white"]::after,
+.theme-hacker nav a[class*="bg-primary"]::after,
+.theme-hacker nav button.bg-white::after,
+.theme-hacker nav button[class*="bg-white"]::after,
+.theme-hacker nav button[class*="bg-primary"]::after,
+.theme-hacker aside nav a[class*="shadow-lg"]::after,
+.theme-hacker aside nav button[class*="shadow-lg"]::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 /* Efecto hover para elementos del menú en modo hacker (no seleccionados) */
 .theme-hacker nav a:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]),
 .theme-hacker nav button:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]) {
-  box-shadow: 0 0 8px rgba(0, 255, 0, 0.5) !important;
-  border: 1px solid #00ff00 !important;
-  background-color: #0a0a0a !important;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.3) !important;
+  border: 1px solid rgba(0, 255, 0, 0.5) !important;
+  background-color: rgba(0, 255, 0, 0.05) !important;
 }
 
-/* Borde blanco simple para submenú activo en modo hacker */
+/* Estilo elegante para submenú activo en modo hacker */
 .theme-hacker nav .bg-primary-600,
 .theme-hacker nav a[class*="bg-primary-600"] {
-  border: 2px solid #ffffff !important;
-  background-color: #000000 !important;
+  border: 1px solid #00ff00 !important;
+  background-color: rgba(0, 255, 0, 0.1) !important;
   color: #00ff00 !important;
-  box-shadow: none !important;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 0 10px rgba(0, 255, 0, 0.1) !important;
+  position: relative !important;
+}
+
+/* Outline blanco sutil para submenú activo */
+.theme-hacker nav .bg-primary-600::after,
+.theme-hacker nav a[class*="bg-primary-600"]::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .theme-dark [class*="bg-gray"]:not([class*="bg-gray-900"]):not([class*="bg-gray-800"]):not([class*="bg-gray-700"]),
