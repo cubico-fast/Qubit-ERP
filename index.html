@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cubic CRM - Sistema de Gestión</title>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script>
+      // Manejar callback de OAuth de Outlook
+      window.addEventListener('load', () => {
+        if (window.location.hash) {
+          const hash = window.location.hash.substring(1)
+          const params = new URLSearchParams(hash)
+          const accessToken = params.get('access_token')
+          const error = params.get('error')
+          
+          if (accessToken && window.opener) {
+            window.opener.postMessage({
+              type: 'OUTLOOK_OAUTH_SUCCESS',
+              accessToken: accessToken
+            }, window.location.origin)
+            window.close()
+          } else if (error && window.opener) {
+            window.opener.postMessage({
+              type: 'OUTLOOK_OAUTH_ERROR',
+              error: error
+            }, window.location.origin)
+            window.close()
+          }
+        }
+      })
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
