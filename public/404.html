@@ -1,12 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cubic CRM - Redirigiendo...</title>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <style>
+      /* Forzar viewport inmediatamente antes de que cargue React */
+      html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+      }
+      * {
+        box-sizing: border-box !important;
+      }
+      #root {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      @media screen and (max-width: 768px) {
+        html {
+          font-size: 16px !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          -webkit-text-size-adjust: 100% !important;
+          -ms-text-size-adjust: 100% !important;
+        }
+        body {
+          font-size: 16px !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        #root {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        #root > div {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+      }
+    </style>
+    <title>Cubic CRM - Sistema de Gestión</title>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
     <script>
+      // Ajustar la URL antes de que React Router la maneje
       (function() {
-        // Obtener la ruta actual
         var path = window.location.pathname;
         var search = window.location.search;
         var hash = window.location.hash;
@@ -28,73 +80,43 @@
           path = '/';
         }
         
-        // Construir la URL base
-        var baseUrl = window.location.origin;
-        if (isGitHubPages) {
-          baseUrl += repoName;
+        // Construir la nueva URL sin recargar la página
+        var newPath = path + search + hash;
+        
+        // Usar history.replaceState para cambiar la URL sin recargar
+        // Esto permite que React Router maneje la ruta correctamente
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', newPath);
         }
-        
-        // Construir la URL de redirección
-        var redirectUrl = baseUrl + '/index.html' + path + search + hash;
-        
-        // Redirigir inmediatamente
-        window.location.replace(redirectUrl);
       })();
+      
+      // Manejar callback de OAuth de Outlook
+      window.addEventListener('load', () => {
+        if (window.location.hash) {
+          const hash = window.location.hash.substring(1)
+          const params = new URLSearchParams(hash)
+          const accessToken = params.get('access_token')
+          const error = params.get('error')
+          
+          if (accessToken && window.opener) {
+            window.opener.postMessage({
+              type: 'OUTLOOK_OAUTH_SUCCESS',
+              accessToken: accessToken
+            }, window.location.origin)
+            window.close()
+          } else if (error && window.opener) {
+            window.opener.postMessage({
+              type: 'OUTLOOK_OAUTH_ERROR',
+              error: error
+            }, window.location.origin)
+            window.close()
+          }
+        }
+      })
     </script>
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-        background: #000;
-        color: #00ff00;
-      }
-      .loading {
-        text-align: center;
-      }
-      .spinner {
-        border: 3px solid rgba(0, 255, 0, 0.3);
-        border-top: 3px solid #00ff00;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    </style>
   </head>
   <body>
-    <div class="loading">
-      <div class="spinner"></div>
-      <p>Redirigiendo...</p>
-    </div>
-    <script>
-      // Fallback: si el script anterior no funciona, intentar después de 100ms
-      setTimeout(function() {
-        if (window.location.pathname.includes('404.html')) {
-          var path = window.location.pathname.replace('/404.html', '');
-          var repoName = '/CUBIC-CRM';
-          if (path.startsWith(repoName)) {
-            path = path.substring(repoName.length);
-          }
-          if (!path || path === '/') {
-            path = '/';
-          }
-          var baseUrl = window.location.origin;
-          if (window.location.hostname.includes('github.io')) {
-            baseUrl += repoName;
-          }
-          window.location.replace(baseUrl + '/index.html' + path);
-        }
-      }, 100);
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
-
