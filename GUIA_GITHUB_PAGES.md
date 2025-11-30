@@ -65,3 +65,4 @@ Una vez desplegado, tu sitio estará disponible en:
 - **Vercel** (si lo configuras): https://cubic-crm.vercel.app
 - **Netlify** (si lo configuras): https://cubic-crm.netlify.app
 
+

@@ -7,7 +7,7 @@ export default defineConfig({
     port: 3000,
     open: true
   },
-  // Configuración para GitHub Pages (si se usa)
-  base: process.env.NODE_ENV === 'production' ? '/CUBIC-CRM/' : '/'
+  // Configuración para GitHub Pages
+  base: import.meta.env.VITE_BASE_PATH || '/CUBIC-CRM/'
 })
 
