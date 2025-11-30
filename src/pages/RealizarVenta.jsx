@@ -754,20 +754,20 @@ const RealizarVenta = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20 w-full" style={{ width: '100%', maxWidth: '100%' }}>
       {/* Breadcrumb */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
         <nav className="text-sm text-gray-600">
           <span className="text-gray-900">Ventas</span> / <span className="text-primary-600">Realizar venta</span>
         </nav>
       </div>
 
-      <div className="flex h-[calc(100vh-180px)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)]">
         {/* Sección Izquierda - Detalles de Venta */}
-        <div className="flex-1 bg-white border-r border-gray-200 p-6 overflow-y-auto">
+        <div className="flex-1 bg-white border-r-0 lg:border-r border-gray-200 p-4 sm:p-6 overflow-y-auto w-full">
           <div className="space-y-4">
             {/* Local y Almacén */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Local:</label>
                 <select
@@ -1319,28 +1319,28 @@ const RealizarVenta = () => {
         </div>
 
         {/* Sección Derecha - Facturación Electrónica */}
-        <div className="w-96 bg-white p-6 overflow-y-auto">
+        <div className="w-full lg:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 p-4 sm:p-6 overflow-y-auto">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">FACTURACION ELECTRONICA</h3>
           
           <div className="space-y-3">
             {/* Fecha */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Fecha:</label>
               <input
                 type="text"
                 value={formatDate(formData.fecha)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm sm:text-right bg-gray-50"
               />
             </div>
 
             {/* Vendedor */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Vendedor:</label>
               <select
                 value={formData.vendedor}
                 onChange={(e) => handleInputChange('vendedor', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 <option value="DIXONACUÑA">DIXONACUÑA</option>
                 <option value="OTRO">OTRO</option>
@@ -1348,12 +1348,12 @@ const RealizarVenta = () => {
             </div>
 
             {/* Moneda */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Moneda:</label>
               <select
                 value={formData.moneda}
                 onChange={(e) => handleInputChange('moneda', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 <option value="Soles">Soles</option>
                 <option value="Dolares">Dólares</option>
@@ -1361,57 +1361,57 @@ const RealizarVenta = () => {
             </div>
 
             {/* Tipo de cambio */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Tipo de cambio:</label>
               <input
                 type="text"
                 value={formatCurrency(formData.tipoCambio)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
               />
             </div>
 
             {/* Subtotal */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Subtotal:</label>
               <input
                 type="text"
                 value={formatCurrency(formData.subtotal)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
               />
             </div>
 
             {/* Descuento */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Descuento:</label>
               <input
                 type="number"
                 value={formData.descuento}
                 onChange={(e) => handleInputChange('descuento', parseFloat(e.target.value) || 0)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-red-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-red-50"
               />
             </div>
 
             {/* Impuesto */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Impuesto (15.25%):</label>
               <input
                 type="text"
                 value={formatCurrency(formData.impuesto)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
               />
             </div>
 
             {/* ICBPER */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">ICBPER:</label>
               <input
                 type="number"
                 value={formData.icbper}
                 onChange={(e) => handleInputChange('icbper', parseFloat(e.target.value) || 0)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right"
               />
             </div>
 
@@ -1422,17 +1422,17 @@ const RealizarVenta = () => {
                 type="text"
                 value={formatCurrency(formData.total)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right font-semibold bg-yellow-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right font-semibold bg-yellow-50"
               />
             </div>
 
             {/* Retención */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Retención:</label>
               <select
                 value={formData.retencion}
                 onChange={(e) => handleInputChange('retencion', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 <option value="">Seleccione</option>
                 <option value="IGV">IGV</option>
@@ -1441,23 +1441,23 @@ const RealizarVenta = () => {
             </div>
 
             {/* Total Retenido */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Total Retenido:</label>
               <input
                 type="text"
                 value={formData.totalRetenido.toFixed(2)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
               />
             </div>
 
             {/* Forma de Pago */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Forma de Pago:</label>
               <select
                 value={formData.formaPago}
                 onChange={(e) => handleInputChange('formaPago', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 <option value="Contado">Contado</option>
                 <option value="Credito">Crédito</option>
@@ -1465,12 +1465,12 @@ const RealizarVenta = () => {
             </div>
 
             {/* Tipo comprobante */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Tipo comprobante:</label>
               <select
                 value={formData.tipoComprobante}
                 onChange={(e) => handleInputChange('tipoComprobante', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 <option value="NOTA VENTA">NOTA VENTA</option>
                 <option value="FACTURA">FACTURA</option>
@@ -1479,12 +1479,12 @@ const RealizarVenta = () => {
             </div>
 
             {/* Dirección de cliente */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Dirección de cliente:</label>
               <select
                 value={formData.direccionCliente}
                 onChange={(e) => handleInputChange('direccionCliente', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               >
                 <option value="">Seleccione</option>
                 <option value="Dirección 1">Dirección 1</option>
@@ -1492,35 +1492,35 @@ const RealizarVenta = () => {
             </div>
 
             {/* Fecha de entrega */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Fecha de entrega:</label>
               <input
                 type="text"
                 value={formatDate(formData.fechaEntrega)}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
               />
             </div>
 
             {/* N° de Orden compra */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">N° de Orden compra:</label>
               <input
                 type="text"
                 value={formData.numeroOrdenCompra}
                 onChange={(e) => handleInputChange('numeroOrdenCompra', e.target.value)}
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
               />
             </div>
 
             {/* Total de productos */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <label className="text-sm font-medium text-gray-700">Total de productos:</label>
               <input
                 type="text"
                 value={formData.totalProductos}
                 readOnly
-                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
+                className="w-full sm:w-32 px-2 py-1 border border-gray-300 rounded text-sm text-right bg-gray-50"
               />
             </div>
 
@@ -1534,11 +1534,11 @@ const RealizarVenta = () => {
       </div>
 
       {/* Footer con botones */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-100 border-t border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-100 border-t border-gray-200 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
             onClick={handleGuardar}
-            className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-semibold shadow-md"
+            className="w-full sm:w-auto px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
             title="Guardar la venta en el registro (F6)"
           >
             <Save size={20} />
@@ -1546,12 +1546,12 @@ const RealizarVenta = () => {
           </button>
           <button
             onClick={handleReiniciar}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
           >
             <RotateCcw size={18} />
             Reiniciar
           </button>
-          <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+          <button className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
             <X size={18} />
             Cancelar
           </button>
