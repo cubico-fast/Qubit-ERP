@@ -142,19 +142,29 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
-        className={`h-full sidebar-gradient text-white transition-all duration-300 ease-in-out flex-shrink-0 ${
+        className={`h-full sidebar-gradient text-white transition-all duration-300 ease-in-out ${
           isOpen 
             ? 'w-64' 
-            : 'lg:w-0 w-64'
+            : 'lg:w-0 w-0'
         } ${
           isOpen 
             ? 'translate-x-0' 
             : 'lg:translate-x-0 -translate-x-full'
         } ${
           !isOpen ? 'lg:overflow-hidden' : ''
+        } ${
+          !isOpen ? 'lg:relative fixed' : ''
         }`}
         style={{
-          background: 'var(--color-sidebar)'
+          background: 'var(--color-sidebar)',
+          ...(isOpen ? {} : { 
+            width: '0', 
+            minWidth: '0', 
+            maxWidth: '0',
+            flexShrink: 0,
+            flexGrow: 0,
+            flexBasis: '0'
+          })
         }}
       >
         {/* Barra de arrastre - lado derecho (solo desktop) */}

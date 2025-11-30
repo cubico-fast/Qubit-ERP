@@ -12,10 +12,19 @@ const Layout = ({ children }) => {
     return true
   })
 
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024
+    }
+    return true
+  })
+
   // Actualizar estado del sidebar cuando cambia el tamaño de la ventana
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
+      const desktop = window.innerWidth >= 1024
+      setIsDesktop(desktop)
+      if (desktop) {
         setSidebarOpen(true)
       } else {
         setSidebarOpen(false)
@@ -26,18 +35,32 @@ const Layout = ({ children }) => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  // El sidebar solo participa en el layout flex cuando está abierto O cuando estamos en desktop
+  const sidebarInLayout = sidebarOpen || isDesktop
+
   return (
     <div 
       className="flex h-screen w-full relative overflow-hidden transition-colors duration-300"
       style={{ 
         backgroundColor: 'var(--color-background)', 
         width: '100%', 
-        maxWidth: '100vw',
+        maxWidth: '100%',
         minWidth: 0,
-        position: 'relative'
+        position: 'relative',
+        margin: 0,
+        padding: 0
       }}
     >
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      {/* Sidebar - Solo en layout flex cuando sidebarInLayout es true */}
+      {sidebarInLayout && (
+        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      )}
+      {/* Sidebar fijo para móvil cuando está cerrado (fuera del layout flex) */}
+      {!sidebarInLayout && (
+        <div style={{ position: 'fixed', left: '-100%', zIndex: 30, pointerEvents: 'none' }}>
+          <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+        </div>
+      )}
       
       {/* Botón para mostrar sidebar cuando está oculto (solo móvil) */}
       {!sidebarOpen && (
@@ -51,15 +74,27 @@ const Layout = ({ children }) => {
         </button>
       )}
       
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
+      <div 
+        className="flex-1 flex flex-col overflow-hidden min-w-0"
+        style={{ 
+          width: '100%',
+          maxWidth: '100%', 
+          minWidth: 0,
+          flex: '1 1 100%',
+          marginLeft: 0,
+          marginRight: 0
+        }}
+      >
         <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
         <main 
-          className="flex-1 overflow-y-auto p-3 md:p-4 lg:p-6 w-full" 
+          className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 lg:p-6 w-full" 
           style={{ 
             width: '100%', 
             maxWidth: '100%', 
             minWidth: 0,
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            paddingLeft: '0.5rem',
+            paddingRight: '0.5rem'
           }}
         >
           <div 
@@ -68,7 +103,9 @@ const Layout = ({ children }) => {
               width: '100%', 
               maxWidth: '100%',
               minWidth: 0,
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              margin: 0,
+              padding: 0
             }}
           >
             {children}

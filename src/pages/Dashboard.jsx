@@ -352,7 +352,9 @@ const Dashboard = () => {
         width: '100%', 
         maxWidth: '100%',
         minWidth: 0,
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        padding: 0,
+        margin: 0
       }}
     >
       {/* Header */}
@@ -368,14 +370,15 @@ const Dashboard = () => {
       </div>
 
       {/* Selector de Rango de Fechas */}
-      <div className="card p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
-          <div className="flex-1 w-full min-w-0">
+      <div className="card p-4 md:p-6 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+        <div className="flex flex-col gap-4 md:gap-6 w-full">
+          {/* Filtros */}
+          <div className="w-full">
             <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
               Período
             </label>
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="relative flex-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 w-full">
+              <div className="relative flex-1 w-full min-w-0">
                 <input
                   type="text"
                   readOnly
@@ -410,22 +413,24 @@ const Dashboard = () => {
                     setSelectingStart(true)
                     setShowCalendar(true)
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer bg-white"
+                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer bg-white"
                   placeholder="Seleccionar período"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 />
                 <Calendar 
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" 
                   size={18} 
                 />
               </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex-1 w-full min-w-0">
+                <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
                   Ubicaciones
                 </label>
                 <select
                   value={ubicacionSeleccionada}
                   onChange={(e) => setUbicacionSeleccionada(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  style={{ width: '100%', boxSizing: 'border-box' }}
                 >
                   <option value="Todos">Todos</option>
                   <option value="Principal">Principal</option>
@@ -437,17 +442,21 @@ const Dashboard = () => {
                   // Botón buscar - recargar datos con filtros
                   window.location.reload()
                 }}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium flex items-center justify-center gap-2 w-full sm:w-auto"
+                style={{ minHeight: '42px' }}
               >
                 <Search size={18} />
                 Buscar
               </button>
             </div>
           </div>
-          <div className="text-left sm:text-right w-full sm:w-auto mt-4 sm:mt-0">
-            <p className="text-xs md:text-sm text-gray-600 mb-1">Total de ventas en el período</p>
-            <p className="text-xl md:text-2xl font-bold text-primary-600 break-words">{formatCurrency(totalVentas)}</p>
-            <p className="text-xs text-gray-500 mt-1">{ventasFiltradas.length} venta(s)</p>
+          {/* Resumen de ventas */}
+          <div className="w-full pt-3 md:pt-0 border-t md:border-t-0 border-gray-200 md:border-0">
+            <div className="text-left md:text-right">
+              <p className="text-xs md:text-sm text-gray-600 mb-1">Total de ventas en el período</p>
+              <p className="text-xl md:text-2xl font-bold text-primary-600 break-words">{formatCurrency(totalVentas)}</p>
+              <p className="text-xs text-gray-500 mt-1">{ventasFiltradas.length} venta(s)</p>
+            </div>
           </div>
         </div>
       </div>
@@ -588,18 +597,18 @@ const Dashboard = () => {
       )}
 
       {/* Tarjetas de Estado de Comprobantes */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         {statCards.map((stat, index) => {
           const Icon = stat.icon
           return (
-            <div key={index} className="card p-3 md:p-6">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-2 sm:space-y-0 sm:space-x-3">
+            <div key={index} className="card p-3 md:p-6 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+              <div className="flex flex-col items-center space-y-2">
                 <div className={`p-2 md:p-3 rounded-lg ${stat.bgColor} flex-shrink-0`}>
                   <Icon className={`${stat.iconColor} w-5 h-5 md:w-6 md:h-6`} />
                 </div>
-                <div className="text-center sm:text-left flex-1 min-w-0">
+                <div className="text-center flex-1 min-w-0 w-full">
                   <p className={`text-[10px] md:text-xs font-medium ${stat.textColor} mb-1 break-words`}>{stat.title}</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-900">{stat.value}</p>
                   <p className="text-[10px] md:text-xs text-gray-500">{stat.label}</p>
                 </div>
               </div>

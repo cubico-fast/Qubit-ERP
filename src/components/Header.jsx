@@ -37,13 +37,16 @@ const Header = ({ toggleSidebar }) => {
 
   return (
     <header 
-      className="border-b shadow-sm transition-colors duration-300"
+      className="border-b shadow-sm transition-colors duration-300 w-full"
       style={{
         backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.border
+        borderColor: theme.colors.border,
+        width: '100%',
+        maxWidth: '100vw',
+        boxSizing: 'border-box'
       }}
     >
-      <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4">
+      <div className="flex items-center justify-between px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <div className="flex items-center space-x-2 md:space-x-4">
           <button
             onClick={toggleSidebar}

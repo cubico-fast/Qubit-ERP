@@ -68,6 +68,17 @@
   /* Aumentar tamaño de fuente base en móvil */
   /* Estilos específicos para móvil - Muy agresivos */
   @media screen and (max-width: 768px) {
+    /* Sidebar cerrado en móvil - no debe ocupar espacio en el layout flex */
+    aside.fixed {
+      position: fixed !important;
+      flex: 0 0 0 !important;
+      flex-shrink: 0 !important;
+      flex-grow: 0 !important;
+      flex-basis: 0 !important;
+      width: 0 !important;
+      min-width: 0 !important;
+      max-width: 0 !important;
+    }
     html {
       font-size: 16px !important;
       width: 100% !important;
@@ -80,7 +91,7 @@
     body {
       font-size: 16px !important;
       width: 100% !important;
-      max-width: 100vw !important;
+      max-width: 100% !important;
       min-width: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
@@ -91,16 +102,79 @@
     }
     #root {
       width: 100% !important;
-      max-width: 100vw !important;
+      max-width: 100% !important;
       min-width: 0 !important;
       overflow-x: hidden !important;
       position: relative !important;
       display: block !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
-    /* Forzar todos los contenedores principales */
-    [class*="flex"], [class*="grid"], div {
+    
+    /* Forzar el contenedor principal del Layout */
+    #root > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+    
+    /* Forzar todos los contenedores principales - SIN max-width restrictivo */
+    [class*="flex"], [class*="grid"] {
+      box-sizing: border-box !important;
+    }
+    
+    /* Asegurar que el contenedor flex principal use todo el ancho */
+    div.flex {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    /* Asegurar que las cards usen todo el ancho disponible */
+    .card {
+      width: 100% !important;
       max-width: 100% !important;
       box-sizing: border-box !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+    
+    /* Forzar main y contenedores de contenido */
+    main {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+    }
+    
+    main > div {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    /* Asegurar que el contenedor flex principal use todo el ancho cuando sidebar está cerrado */
+    div.flex.h-screen {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    /* El contenedor flex-1 debe usar todo el ancho disponible */
+    div.flex-1 {
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 1 1 100% !important;
+    }
+    
+    /* Mejorar inputs y selects en móvil */
+    input[type="text"],
+    input[type="date"],
+    input[type="email"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      font-size: 16px !important;
     }
   }
 
@@ -113,12 +187,59 @@
     body {
       font-size: 16px !important;
       width: 100% !important;
-      max-width: 100vw !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
     #root {
       width: 100% !important;
-      max-width: 100vw !important;
+      max-width: 100% !important;
       min-width: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    /* Forzar el contenedor principal del Layout */
+    #root > div {
+      width: 100vw !important;
+      max-width: 100vw !important;
+    }
+    
+    /* Asegurar que las cards y contenedores usen todo el ancho disponible */
+    .card {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+    
+    /* Forzar main y contenedores de contenido */
+    main {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+    }
+    
+    main > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+    /* Mejorar el layout de los inputs y selects en móvil */
+    input, select, textarea {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    
+    /* Asegurar que los grids se adapten correctamente */
+    .grid {
+      width: 100% !important;
+      max-width: 100% !important;
     }
   }
 
