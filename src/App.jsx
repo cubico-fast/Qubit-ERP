@@ -39,34 +39,78 @@ function App() {
   // Asegurar que el viewport se aplique correctamente en móvil
   useEffect(() => {
     const setViewport = () => {
+      // Forzar viewport meta tag
       const viewport = document.querySelector('meta[name="viewport"]')
       if (viewport) {
-        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover')
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no')
       }
       
-      // Forzar ancho en móvil
-      if (window.innerWidth <= 768) {
-        document.documentElement.style.width = '100%'
-        document.documentElement.style.maxWidth = '100%'
-        document.body.style.width = '100%'
-        document.body.style.maxWidth = '100vw'
+      // Forzar ancho en móvil - MÁS AGRESIVO
+      const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      
+      if (isMobile) {
+        // Forzar estilos en HTML
+        document.documentElement.style.setProperty('width', '100%', 'important')
+        document.documentElement.style.setProperty('max-width', '100%', 'important')
+        document.documentElement.style.setProperty('min-width', '0', 'important')
+        document.documentElement.style.setProperty('overflow-x', 'hidden', 'important')
+        
+        // Forzar estilos en BODY
+        document.body.style.setProperty('width', '100%', 'important')
+        document.body.style.setProperty('max-width', '100vw', 'important')
+        document.body.style.setProperty('min-width', '0', 'important')
+        document.body.style.setProperty('margin', '0', 'important')
+        document.body.style.setProperty('padding', '0', 'important')
+        document.body.style.setProperty('overflow-x', 'hidden', 'important')
+        document.body.style.setProperty('position', 'relative', 'important')
+        
+        // Forzar estilos en ROOT
         const root = document.getElementById('root')
         if (root) {
-          root.style.width = '100%'
-          root.style.maxWidth = '100vw'
+          root.style.setProperty('width', '100%', 'important')
+          root.style.setProperty('max-width', '100vw', 'important')
+          root.style.setProperty('min-width', '0', 'important')
+          root.style.setProperty('overflow-x', 'hidden', 'important')
+          root.style.setProperty('position', 'relative', 'important')
+          root.style.setProperty('display', 'block', 'important')
         }
+        
+        // Prevenir ajuste automático de texto
+        document.documentElement.style.setProperty('-webkit-text-size-adjust', '100%', 'important')
+        document.documentElement.style.setProperty('-ms-text-size-adjust', '100%', 'important')
+        document.body.style.setProperty('-webkit-text-size-adjust', '100%', 'important')
+        document.body.style.setProperty('-ms-text-size-adjust', '100%', 'important')
       }
     }
     
+    // Ejecutar inmediatamente
     setViewport()
+    
+    // Ejecutar después de un pequeño delay para asegurar que el DOM esté listo
+    setTimeout(setViewport, 100)
+    setTimeout(setViewport, 500)
+    
+    // Event listeners
     window.addEventListener('resize', setViewport)
     window.addEventListener('orientationchange', () => {
       setTimeout(setViewport, 100)
+      setTimeout(setViewport, 500)
     })
+    
+    // Observer para cambios en el DOM
+    const observer = new MutationObserver(setViewport)
+    if (document.body) {
+      observer.observe(document.body, { 
+        attributes: true, 
+        childList: true, 
+        subtree: true 
+      })
+    }
     
     return () => {
       window.removeEventListener('resize', setViewport)
       window.removeEventListener('orientationchange', setViewport)
+      observer.disconnect()
     }
   }, [])
 
