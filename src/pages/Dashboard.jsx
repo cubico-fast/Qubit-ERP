@@ -346,27 +346,27 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Panel de control y estadísticas</p>
+      <div className="flex flex-col gap-3 md:gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 break-words">Dashboard</h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">Panel de control y estadísticas</p>
         </div>
-        <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600 flex-shrink-0">
-          <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" />
-          <span className="whitespace-nowrap">Usted tiene hasta el {getFechaLimite()}</span>
+        <div className="flex items-center space-x-2 text-xs md:text-sm text-gray-600">
+          <Calendar size={16} className="md:w-[18px] md:h-[18px]" />
+          <span className="break-words">Usted tiene hasta el {getFechaLimite()}</span>
         </div>
       </div>
 
       {/* Selector de Rango de Fechas */}
-      <div className="card overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex-1 min-w-0 w-full">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="card p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
+          <div className="flex-1 w-full min-w-0">
+            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
               Período
             </label>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -410,14 +410,14 @@ const Dashboard = () => {
                   size={18} 
                 />
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ubicaciones
                 </label>
                 <select
                   value={ubicacionSeleccionada}
                   onChange={(e) => setUbicacionSeleccionada(e.target.value)}
-                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="Todos">Todos</option>
                   <option value="Principal">Principal</option>
@@ -429,16 +429,16 @@ const Dashboard = () => {
                   // Botón buscar - recargar datos con filtros
                   window.location.reload()
                 }}
-                className="px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium flex items-center justify-center gap-2 w-full sm:w-auto"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium flex items-center gap-2"
               >
-                <Search size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <Search size={18} />
                 Buscar
               </button>
             </div>
           </div>
-          <div className="text-left sm:text-right w-full sm:w-auto">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Total de ventas en el período</p>
-            <p className="text-xl sm:text-2xl font-bold text-primary-600 break-words">{formatCurrency(totalVentas)}</p>
+          <div className="text-left sm:text-right w-full sm:w-auto mt-4 sm:mt-0">
+            <p className="text-xs md:text-sm text-gray-600 mb-1">Total de ventas en el período</p>
+            <p className="text-xl md:text-2xl font-bold text-primary-600 break-words">{formatCurrency(totalVentas)}</p>
             <p className="text-xs text-gray-500 mt-1">{ventasFiltradas.length} venta(s)</p>
           </div>
         </div>
@@ -446,13 +446,13 @@ const Dashboard = () => {
 
       {/* Modal de Calendario */}
       {showCalendar && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50" onClick={(e) => {
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4" onClick={(e) => {
           if (e.target === e.currentTarget) {
             setShowCalendar(false)
           }
         }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4" ref={calendarRef} onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" ref={calendarRef} onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Seleccionar Período</h3>
                 <button
@@ -463,9 +463,9 @@ const Dashboard = () => {
                 </button>
               </div>
               
-              <div className="flex gap-6">
+              <div className="flex flex-col md:flex-row gap-4 md:gap-6">
                 {/* Calendario Izquierdo */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={() => setCurrentMonthLeft(subMonths(currentMonthLeft, 1))}
@@ -505,7 +505,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Calendario Derecho */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={() => {
@@ -580,19 +580,19 @@ const Dashboard = () => {
       )}
 
       {/* Tarjetas de Estado de Comprobantes */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         {statCards.map((stat, index) => {
           const Icon = stat.icon
           return (
-            <div key={index} className="card">
-              <div className="flex items-center space-x-3">
-                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={stat.iconColor} size={24} />
+            <div key={index} className="card p-3 md:p-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-2 sm:space-y-0 sm:space-x-3">
+                <div className={`p-2 md:p-3 rounded-lg ${stat.bgColor} flex-shrink-0`}>
+                  <Icon className={`${stat.iconColor} w-5 h-5 md:w-6 md:h-6`} />
                 </div>
-                <div>
-                  <p className={`text-xs font-medium ${stat.textColor} mb-1`}>{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  <p className="text-xs text-gray-500">{stat.label}</p>
+                <div className="text-center sm:text-left flex-1 min-w-0">
+                  <p className={`text-[10px] md:text-xs font-medium ${stat.textColor} mb-1 break-words`}>{stat.title}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-[10px] md:text-xs text-gray-500">{stat.label}</p>
                 </div>
               </div>
             </div>

@@ -33,10 +33,22 @@ const Layout = ({ children }) => {
     >
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 w-full">
+      {/* Botón para mostrar sidebar cuando está oculto (solo móvil) */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="fixed left-0 top-1/2 transform -translate-y-1/2 z-50 bg-primary-700 text-white p-2 rounded-r-lg hover:bg-primary-800 active:bg-primary-900 transition-colors shadow-lg lg:hidden touch-manipulation"
+          title="Mostrar menú"
+          aria-label="Abrir menú"
+        >
+          <ChevronRight size={20} />
+        </button>
+      )}
+      
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 w-full max-w-full">
-          <div className="w-full max-w-full">
+        <main className="flex-1 overflow-y-auto p-3 md:p-4 lg:p-6 max-w-full">
+          <div className="w-full max-w-full overflow-x-hidden">
             {children}
           </div>
         </main>
