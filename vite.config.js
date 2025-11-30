@@ -1,23 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Detectar el entorno
+// Detectar el entorno - Vercel siempre tiene VERCEL=1
 const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
 const isNetlify = process.env.NETLIFY === 'true'
-const isGitHubPages = process.env.GITHUB_PAGES === 'true'
+const isGitHubPages = process.env.GITHUB_PAGES === 'true' || process.env.GITHUB_ACTIONS
 
 // Determinar el base path
 let basePath = '/'
 if (process.env.VITE_BASE_PATH) {
   basePath = process.env.VITE_BASE_PATH
 } else if (isVercel || isNetlify) {
+  // Vercel y Netlify usan raíz
   basePath = '/'
 } else if (isGitHubPages) {
+  // GitHub Pages usa el nombre del repositorio
   basePath = '/CUBIC-CRM/'
 } else {
   // Por defecto para desarrollo local
   basePath = '/'
 }
+
+console.log('🔧 Build config:', {
+  isVercel,
+  isNetlify,
+  isGitHubPages,
+  basePath,
+  VERCEL: process.env.VERCEL,
+  VERCEL_ENV: process.env.VERCEL_ENV
+})
 
 export default defineConfig({
   plugins: [react()],
