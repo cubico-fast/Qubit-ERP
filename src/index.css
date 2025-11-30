@@ -339,11 +339,28 @@
   color: #e2e8f0 !important;
 }
 
+/* Forzar que TODOS los colores primarios y azules sean grises/blancos en tema oscuro */
+.theme-dark .text-primary-50,
+.theme-dark .text-primary-100,
+.theme-dark .text-primary-200,
+.theme-dark .text-primary-300,
+.theme-dark .text-primary-400,
+.theme-dark .text-primary-500,
 .theme-dark .text-primary-600,
 .theme-dark .text-primary-700,
+.theme-dark .text-primary-800,
+.theme-dark .text-primary-900,
+.theme-dark .text-blue-50,
+.theme-dark .text-blue-100,
+.theme-dark .text-blue-200,
+.theme-dark .text-blue-300,
+.theme-dark .text-blue-400,
+.theme-dark .text-blue-500,
 .theme-dark .text-blue-600,
-.theme-dark .text-blue-700 {
-  color: #60a5fa !important;
+.theme-dark .text-blue-700,
+.theme-dark .text-blue-800,
+.theme-dark .text-blue-900 {
+  color: #e2e8f0 !important;
 }
 
 .theme-dark .card {
@@ -504,14 +521,34 @@
   color: #ffffff !important;
 }
 
-.theme-dark button:not(.bg-primary-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-red-600):not(.bg-yellow-500) {
+/* Forzar que TODOS los botones con colores primarios/azules sean grises en tema oscuro */
+.theme-dark button[class*="bg-primary"],
+.theme-dark button[class*="bg-blue"],
+.theme-dark .btn-primary,
+.theme-dark [class*="bg-primary-600"],
+.theme-dark [class*="bg-blue-600"] {
+  background-color: #4b5563 !important;
+  border-color: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+.theme-dark button[class*="bg-primary"]:hover,
+.theme-dark button[class*="bg-blue"]:hover,
+.theme-dark .btn-primary:hover,
+.theme-dark [class*="bg-primary-600"]:hover,
+.theme-dark [class*="bg-blue-600"]:hover {
+  background-color: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+.theme-dark button:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
   background-color: var(--color-surface) !important;
   border-color: var(--color-border) !important;
   color: #ffffff !important;
 }
 
-.theme-dark button:hover:not(.bg-primary-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-red-600):not(.bg-yellow-500) {
-  background-color: #334155 !important;
+.theme-dark button:hover:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+  background-color: #374151 !important;
   color: #ffffff !important;
 }
 
@@ -536,12 +573,23 @@
   color: #00ff00 !important;
 }
 
-/* Mejorar visibilidad de enlaces - TODO gris/blanco en oscuro, verde en hacker */
+/* Mejorar visibilidad de enlaces - TODO gris/blanco en oscuro */
 .theme-dark a {
-  color: #e2e8f0 !important;
+  color: #d1d5db !important;
 }
 
 .theme-dark a:hover {
+  color: #ffffff !important;
+}
+
+/* Forzar que enlaces con clases de color primario/azul sean grises */
+.theme-dark a[class*="text-primary"],
+.theme-dark a[class*="text-blue"] {
+  color: #d1d5db !important;
+}
+
+.theme-dark a[class*="text-primary"]:hover,
+.theme-dark a[class*="text-blue"]:hover {
   color: #ffffff !important;
 }
 
@@ -774,6 +822,32 @@
   /* Solo aplicar si no tiene una clase de color de texto específica */
 }
 
+/* Forzar que TODOS los fondos primarios/azules sean grises en tema oscuro */
+.theme-dark [class*="bg-primary"],
+.theme-dark [class*="bg-blue"]:not([class*="bg-blue-900"]):not([class*="bg-blue-800"]):not([class*="bg-blue-700"]) {
+  background-color: #4b5563 !important;
+}
+
+.theme-dark [class*="bg-primary"]:hover,
+.theme-dark [class*="bg-blue"]:hover:not([class*="bg-blue-900"]):not([class*="bg-blue-800"]):not([class*="bg-blue-700"]) {
+  background-color: #6b7280 !important;
+}
+
+/* Reglas adicionales para tema oscuro - Forzar fondo gris en TODOS los elementos */
+.theme-dark div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-cyan"]):not([class*="bg-purple"]):not([class*="bg-pink"]):not([class*="bg-orange"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-black"]) {
+  /* Los fondos ya están controlados por las variables CSS */
+}
+
+.theme-dark section,
+.theme-dark article,
+.theme-dark aside,
+.theme-dark header,
+.theme-dark footer,
+.theme-dark nav {
+  background-color: var(--color-surface) !important;
+  border-color: #4b5563 !important;
+}
+
 /* Reglas adicionales para tema hacker - Forzar fondo negro en TODOS los elementos */
 .theme-hacker div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-cyan"]):not([class*="bg-purple"]):not([class*="bg-pink"]):not([class*="bg-orange"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-black"]) {
   background-color: #000000 !important;
@@ -833,12 +907,26 @@
   box-shadow: 0 0 5px rgba(0, 255, 0, 0.3) !important;
 }
 
-/* Forzar que los bordes también sigan el tema */
+/* Forzar que los bordes también sigan el tema - TODOS grises en oscuro */
 .theme-dark .border-gray-200,
 .theme-dark .border-gray-300,
 .theme-dark .border-gray-400,
-.theme-dark .border-gray-500 {
-  border-color: var(--color-border) !important;
+.theme-dark .border-gray-500,
+.theme-dark .border-primary-600,
+.theme-dark .border-blue-600,
+.theme-dark [class*="border-primary"],
+.theme-dark [class*="border-blue"] {
+  border-color: #4b5563 !important;
+}
+
+/* Forzar que TODOS los bordes sean grises en tema oscuro */
+.theme-dark * {
+  border-color: #4b5563 !important;
+}
+
+.theme-dark .border,
+.theme-dark [class*="border"]:not([class*="border-0"]) {
+  border-color: #4b5563 !important;
 }
 
 /* TODOS los bordes en tema hacker deben ser verdes */
