@@ -1,0 +1,1 @@
+"# CUBIC-CRM"  initgit add README.mdgit commit -m "first commit"git branch -M maingit remote add origin https://github.com/cubico-fast/CUBIC-CRM.gitgit push -u origin main
