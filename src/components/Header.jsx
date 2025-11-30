@@ -43,12 +43,13 @@ const Header = ({ toggleSidebar }) => {
         borderColor: theme.colors.border
       }}
     >
-      <div className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4">
+        <div className="flex items-center space-x-2 md:space-x-4">
           <button
             onClick={toggleSidebar}
-            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg transition-colors lg:hidden"
             title="Mostrar/Ocultar menú"
+            aria-label="Toggle menu"
           >
             <Menu size={24} />
           </button>
@@ -62,7 +63,7 @@ const Header = ({ toggleSidebar }) => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 md:space-x-4">
           {/* Reloj con hora de la red */}
           <div className="hidden md:flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
             <Clock size={16} className="text-gray-600" />
@@ -79,7 +80,7 @@ const Header = ({ toggleSidebar }) => {
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm font-medium transition-colors"
+            className="px-2 md:px-3 py-1 md:py-2 border rounded-lg focus:outline-none focus:ring-2 text-xs md:text-sm font-medium transition-colors"
             style={{
               backgroundColor: theme.colors.surface,
               borderColor: theme.colors.border,
@@ -95,30 +96,31 @@ const Header = ({ toggleSidebar }) => {
             style={{
               color: theme.colors.textSecondary
             }}
+            aria-label="Notificaciones"
           >
-            <Bell size={20} />
+            <Bell size={18} className="md:w-5 md:h-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
           </button>
           <div 
-            className="flex items-center space-x-3 pl-4 border-l"
+            className="flex items-center space-x-2 md:space-x-3 md:pl-4 md:border-l"
             style={{ borderColor: theme.colors.border }}
           >
             <div className="text-right hidden sm:block">
               <p 
-                className="text-sm font-medium"
+                className="text-xs md:text-sm font-medium"
                 style={{ color: theme.colors.text }}
               >
                 Admin Usuario
               </p>
               <p 
-                className="text-xs"
+                className="text-xs hidden md:block"
                 style={{ color: theme.colors.textSecondary }}
               >
                 admin@cubic.com
               </p>
             </div>
             <div 
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+              className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-white font-semibold text-xs md:text-sm"
               style={{
                 background: `linear-gradient(135deg, ${theme.colors.primary[500]}, ${theme.colors.primary[700]})`
               }}

@@ -32,6 +32,30 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.3s ease, color 0.3s ease;
+    /* Prevenir zoom en iOS al hacer doble tap */
+    touch-action: manipulation;
+  }
+
+  /* Mejorar scroll en móvil */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevenir selección de texto accidental en móvil */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Mejorar inputs en móvil */
+  input, select, textarea {
+    font-size: 16px; /* Previene zoom en iOS */
+  }
+
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
 }
 

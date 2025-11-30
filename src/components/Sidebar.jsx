@@ -64,23 +64,32 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     return location.pathname.startsWith(path)
   }
 
-  // Manejar inicio del arrastre
-  const handleMouseDown = (e) => {
+  // Obtener coordenadas X (mouse o touch)
+  const getClientX = (e) => {
+    return e.touches ? e.touches[0].clientX : e.clientX
+  }
+
+  // Manejar inicio del arrastre (mouse y touch)
+  const handleStart = (e) => {
     e.preventDefault()
     e.stopPropagation()
     setArrastrando(true)
-    inicioArrastreRef.current = e.clientX
+    inicioArrastreRef.current = getClientX(e)
     document.body.style.cursor = 'grabbing'
     document.body.style.userSelect = 'none'
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
+    document.body.style.touchAction = 'none'
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleEnd)
+    document.addEventListener('touchmove', handleMove, { passive: false })
+    document.addEventListener('touchend', handleEnd)
   }
 
-  // Manejar movimiento del arrastre
-  const handleMouseMove = (e) => {
+  // Manejar movimiento del arrastre (mouse y touch)
+  const handleMove = (e) => {
     if (!arrastrando || !inicioArrastreRef.current) return
     
-    const deltaX = inicioArrastreRef.current - e.clientX
+    const currentX = getClientX(e)
+    const deltaX = inicioArrastreRef.current - currentX
     
     // Si se arrastra hacia la izquierda más de 50px, ocultar el sidebar
     if (deltaX > 50 && isOpen) {
@@ -89,28 +98,33 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       inicioArrastreRef.current = null
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.touchAction = ''
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleEnd)
+      document.removeEventListener('touchmove', handleMove)
+      document.removeEventListener('touchend', handleEnd)
       return
     }
   }
 
-  // Manejar fin del arrastre
-  const handleMouseUp = () => {
+  // Manejar fin del arrastre (mouse y touch)
+  const handleEnd = () => {
     setArrastrando(false)
     inicioArrastreRef.current = null
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
+    document.body.style.touchAction = ''
+    document.removeEventListener('mousemove', handleMove)
+    document.removeEventListener('mouseup', handleEnd)
+    document.removeEventListener('touchmove', handleMove)
+    document.removeEventListener('touchend', handleEnd)
   }
 
   // Limpiar event listeners al desmontar
   useEffect(() => {
     return () => {
       if (arrastrando) {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
+        handleEnd()
       }
     }
   }, [arrastrando])
@@ -143,11 +157,12 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           background: 'var(--color-sidebar)'
         }}
       >
-        {/* Barra de arrastre - lado derecho */}
+        {/* Barra de arrastre - lado derecho (solo desktop) */}
         {isOpen && (
           <div
-            className="absolute right-0 top-0 bottom-0 w-4 cursor-grab active:cursor-grabbing hover:bg-primary-600/50 transition-colors z-10 group"
-            onMouseDown={handleMouseDown}
+            className="absolute right-0 top-0 bottom-0 w-4 cursor-grab active:cursor-grabbing hover:bg-primary-600/50 transition-colors z-10 group hidden lg:block"
+            onMouseDown={handleStart}
+            onTouchStart={handleStart}
             title="Arrastra hacia la izquierda para ocultar el menú"
           >
             <div className="absolute right-1 top-1/2 transform -translate-y-1/2 opacity-50 group-hover:opacity-100 transition-opacity">
