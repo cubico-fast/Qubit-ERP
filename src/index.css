@@ -381,8 +381,20 @@
   color: #00ff00 !important;
 }
 
-.theme-hacker *:not(svg):not(path) {
+/* Forzar que TODOS los elementos tengan fondo negro y texto verde */
+.theme-hacker *:not(svg):not(path):not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
   color: #00ff00 !important;
+}
+
+/* Forzar que TODOS los fondos sean negros */
+.theme-hacker,
+.theme-hacker body,
+.theme-hacker #root,
+.theme-hacker main,
+.theme-hacker section,
+.theme-hacker article,
+.theme-hacker div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+  background-color: #000000 !important;
 }
 
 .theme-hacker h1,
@@ -421,7 +433,7 @@
 }
 
 .theme-hacker .card {
-  background-color: #0a0a0a !important;
+  background-color: #000000 !important;
   border-color: #00ff00 !important;
   color: #00ff00 !important;
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.2) !important;
@@ -430,7 +442,7 @@
 .theme-hacker input,
 .theme-hacker textarea,
 .theme-hacker select {
-  background-color: #0a0a0a !important;
+  background-color: #000000 !important;
   border-color: #00ff00 !important;
   color: #00ff00 !important;
 }
@@ -451,8 +463,10 @@
 .theme-hacker input[class*="bg-gray"],
 .theme-hacker input[class*="bg-white"],
 .theme-hacker select[class*="bg-gray"],
-.theme-hacker select[class*="bg-white"] {
-  background-color: #0a0a0a !important;
+.theme-hacker select[class*="bg-white"],
+.theme-hacker textarea[class*="bg-gray"],
+.theme-hacker textarea[class*="bg-white"] {
+  background-color: #000000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;
 }
@@ -734,7 +748,7 @@
 .theme-hacker [class*="badge"],
 .theme-hacker [class*="Badge"] {
   color: #00ff00 !important;
-  background-color: #0a0a0a !important;
+  background-color: #000000 !important;
   border-color: #00ff00 !important;
 }
 
@@ -750,7 +764,7 @@
 .theme-hacker [role="menu"],
 .theme-hacker [role="menuitem"],
 .theme-hacker .dropdown {
-  background-color: #0a0a0a !important;
+  background-color: #000000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;
 }
@@ -758,6 +772,21 @@
 /* Regla final: Asegurar que TODOS los elementos sin clases específicas sigan la paleta */
 .theme-dark *:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-cyan"]):not([class*="bg-purple"]):not([class*="bg-pink"]):not([class*="bg-orange"]):not([class*="bg-indigo"]):not([class*="bg-violet"]) {
   /* Solo aplicar si no tiene una clase de color de texto específica */
+}
+
+/* Reglas adicionales para tema hacker - Forzar fondo negro en TODOS los elementos */
+.theme-hacker div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-cyan"]):not([class*="bg-purple"]):not([class*="bg-pink"]):not([class*="bg-orange"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-black"]) {
+  background-color: #000000 !important;
+}
+
+.theme-hacker section,
+.theme-hacker article,
+.theme-hacker aside,
+.theme-hacker header,
+.theme-hacker footer,
+.theme-hacker nav {
+  background-color: #000000 !important;
+  border-color: #00ff00 !important;
 }
 
 .theme-dark [class*="bg-gray"]:not([class*="bg-gray-900"]):not([class*="bg-gray-800"]):not([class*="bg-gray-700"]),
@@ -769,7 +798,7 @@
 .theme-hacker [class*="bg-gray"]:not([class*="bg-gray-900"]):not([class*="bg-gray-800"]):not([class*="bg-gray-700"]),
 .theme-hacker [class*="bg-slate"]:not([class*="bg-slate-900"]):not([class*="bg-slate-800"]):not([class*="bg-slate-700"]),
 .theme-hacker [class*="bg-zinc"]:not([class*="bg-zinc-900"]):not([class*="bg-zinc-800"]):not([class*="bg-zinc-700"]) {
-  background-color: #0a0a0a !important;
+  background-color: #000000 !important;
 }
 
 /* Forzar que TODOS los bg-white y bg-gray-50 sigan el tema */
@@ -780,11 +809,16 @@
   background-color: var(--color-surface) !important;
 }
 
+/* TODOS los fondos en tema hacker deben ser negros */
 .theme-hacker .bg-white,
 .theme-hacker .bg-gray-50,
 .theme-hacker .bg-gray-100,
-.theme-hacker .bg-gray-200 {
-  background-color: #0a0a0a !important;
+.theme-hacker .bg-gray-200,
+.theme-hacker [class*="bg-gray"],
+.theme-hacker [class*="bg-slate"],
+.theme-hacker [class*="bg-zinc"],
+.theme-hacker [class*="bg-white"] {
+  background-color: #000000 !important;
 }
 
 /* Forzar hover states también */
@@ -795,17 +829,29 @@
 
 .theme-hacker .hover\:bg-gray-50:hover,
 .theme-hacker .hover\:bg-gray-100:hover {
-  background-color: #0f0f0f !important;
+  background-color: #000000 !important;
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.3) !important;
 }
 
 /* Forzar que los bordes también sigan el tema */
 .theme-dark .border-gray-200,
-.theme-dark .border-gray-300 {
+.theme-dark .border-gray-300,
+.theme-dark .border-gray-400,
+.theme-dark .border-gray-500 {
   border-color: var(--color-border) !important;
 }
 
+/* TODOS los bordes en tema hacker deben ser verdes */
+.theme-hacker * {
+  border-color: #00ff00 !important;
+}
+
 .theme-hacker .border-gray-200,
-.theme-hacker .border-gray-300 {
+.theme-hacker .border-gray-300,
+.theme-hacker .border-gray-400,
+.theme-hacker .border-gray-500,
+.theme-hacker .border,
+.theme-hacker [class*="border"] {
   border-color: #00ff00 !important;
 }
 
