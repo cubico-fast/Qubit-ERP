@@ -160,6 +160,14 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
           // En desktop, usar relative cuando está abierto, fixed cuando está cerrado
           position: isMobile ? 'fixed' : (isOpen ? 'relative' : 'fixed'),
           zIndex: (isMobile && isOpen) ? 50 : (isMobile ? 30 : 'auto'),
+          // Posicionamiento en móvil
+          ...(isMobile ? {
+            top: 0,
+            left: isOpen ? 0 : '-100%',
+            height: '100vh',
+            transition: 'left 0.3s ease-in-out',
+            boxShadow: isOpen ? '2px 0 8px rgba(0, 0, 0, 0.15)' : 'none'
+          } : {}),
           ...(isOpen ? {} : { 
             width: '0', 
             minWidth: '0', 

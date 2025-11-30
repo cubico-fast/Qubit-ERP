@@ -62,10 +62,10 @@ const Layout = ({ children }) => {
       )}
       
       {/* Botón para mostrar sidebar cuando está oculto (solo móvil) */}
-      {!sidebarOpen && (
+      {!sidebarOpen && !isDesktop && (
         <button
           onClick={() => setSidebarOpen(true)}
-          className="fixed left-0 top-1/2 transform -translate-y-1/2 z-50 bg-primary-700 text-white p-2 rounded-r-lg hover:bg-primary-800 active:bg-primary-900 transition-colors shadow-lg lg:hidden touch-manipulation"
+          className="fixed left-0 top-1/2 transform -translate-y-1/2 z-50 bg-primary-700 text-white p-2 rounded-r-lg hover:bg-primary-800 active:bg-primary-900 transition-colors shadow-lg touch-manipulation"
           title="Mostrar menú"
           aria-label="Abrir menú"
         >
