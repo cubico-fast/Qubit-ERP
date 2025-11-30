@@ -349,24 +349,24 @@ const Dashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Panel de control y estadísticas</p>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Panel de control y estadísticas</p>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Calendar size={18} />
-          <span>Usted tiene hasta el {getFechaLimite()}</span>
+        <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600 flex-shrink-0">
+          <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" />
+          <span className="whitespace-nowrap">Usted tiene hasta el {getFechaLimite()}</span>
         </div>
       </div>
 
       {/* Selector de Rango de Fechas */}
-      <div className="card">
+      <div className="card overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0 w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Período
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -410,14 +410,14 @@ const Dashboard = () => {
                   size={18} 
                 />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ubicaciones
                 </label>
                 <select
                   value={ubicacionSeleccionada}
                   onChange={(e) => setUbicacionSeleccionada(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                 >
                   <option value="Todos">Todos</option>
                   <option value="Principal">Principal</option>
@@ -429,16 +429,16 @@ const Dashboard = () => {
                   // Botón buscar - recargar datos con filtros
                   window.location.reload()
                 }}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium flex items-center justify-center gap-2 w-full sm:w-auto"
               >
-                <Search size={18} />
+                <Search size={16} className="sm:w-[18px] sm:h-[18px]" />
                 Buscar
               </button>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600 mb-1">Total de ventas en el período</p>
-            <p className="text-2xl font-bold text-primary-600">{formatCurrency(totalVentas)}</p>
+          <div className="text-left sm:text-right w-full sm:w-auto">
+            <p className="text-xs sm:text-sm text-gray-600 mb-1">Total de ventas en el período</p>
+            <p className="text-xl sm:text-2xl font-bold text-primary-600 break-words">{formatCurrency(totalVentas)}</p>
             <p className="text-xs text-gray-500 mt-1">{ventasFiltradas.length} venta(s)</p>
           </div>
         </div>
