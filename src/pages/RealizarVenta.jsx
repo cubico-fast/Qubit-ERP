@@ -762,7 +762,7 @@ const RealizarVenta = () => {
         </nav>
       </div>
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)] overflow-y-auto">
+      <div className="flex flex-col lg:flex-row overflow-y-auto" style={{ height: 'calc(100vh - 180px)' }}>
         {/* Sección Izquierda - Detalles de Venta */}
         <div className="flex-1 bg-white border-r-0 lg:border-r border-gray-200 p-4 sm:p-6 w-full">
             <div className="space-y-4">
@@ -1529,7 +1529,6 @@ const RealizarVenta = () => {
               <Plus size={16} />
               Redactar anotación
             </button>
-          </div>
           </div>
         </div>
       </div>
