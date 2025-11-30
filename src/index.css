@@ -863,6 +863,114 @@
   border-color: #00ff00 !important;
 }
 
+/* Efecto de resplandor verde para elementos activos del menú en modo hacker */
+.theme-hacker nav a.bg-white,
+.theme-hacker nav a[class*="bg-white"],
+.theme-hacker nav a[class*="bg-primary"],
+.theme-hacker nav button.bg-white,
+.theme-hacker nav button[class*="bg-white"],
+.theme-hacker nav button[class*="bg-primary"],
+.theme-hacker nav .bg-white,
+.theme-hacker nav .bg-primary-600,
+.theme-hacker aside nav a[class*="shadow-lg"],
+.theme-hacker aside nav button[class*="shadow-lg"] {
+  box-shadow: 
+    0 0 10px rgba(0, 255, 0, 0.6),
+    0 0 20px rgba(0, 255, 0, 0.4),
+    0 0 30px rgba(0, 255, 0, 0.3),
+    0 0 40px rgba(0, 255, 0, 0.2),
+    inset 0 0 15px rgba(0, 255, 0, 0.15) !important;
+  border: 2px solid #00ff00 !important;
+  background-color: #000000 !important;
+  color: #00ff00 !important;
+  animation: hackerGlow 2s ease-in-out infinite alternate !important;
+  position: relative !important;
+}
+
+/* Efecto adicional de resplandor exterior */
+.theme-hacker nav a.bg-white::before,
+.theme-hacker nav a[class*="bg-white"]::before,
+.theme-hacker nav a[class*="bg-primary"]::before,
+.theme-hacker nav button.bg-white::before,
+.theme-hacker nav button[class*="bg-white"]::before,
+.theme-hacker nav button[class*="bg-primary"]::before,
+.theme-hacker aside nav a[class*="shadow-lg"]::before,
+.theme-hacker aside nav button[class*="shadow-lg"]::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: 
+    0 0 15px rgba(0, 255, 0, 0.8),
+    0 0 25px rgba(0, 255, 0, 0.6),
+    0 0 35px rgba(0, 255, 0, 0.4);
+  z-index: -1;
+  animation: hackerGlowOuter 2s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* Animación de resplandor pulsante interno */
+@keyframes hackerGlow {
+  from {
+    box-shadow: 
+      0 0 10px rgba(0, 255, 0, 0.6),
+      0 0 20px rgba(0, 255, 0, 0.4),
+      0 0 30px rgba(0, 255, 0, 0.3),
+      0 0 40px rgba(0, 255, 0, 0.2),
+      inset 0 0 15px rgba(0, 255, 0, 0.15);
+  }
+  to {
+    box-shadow: 
+      0 0 15px rgba(0, 255, 0, 0.8),
+      0 0 30px rgba(0, 255, 0, 0.6),
+      0 0 45px rgba(0, 255, 0, 0.4),
+      0 0 60px rgba(0, 255, 0, 0.3),
+      inset 0 0 20px rgba(0, 255, 0, 0.25);
+  }
+}
+
+/* Animación de resplandor pulsante externo */
+@keyframes hackerGlowOuter {
+  from {
+    box-shadow: 
+      0 0 15px rgba(0, 255, 0, 0.8),
+      0 0 25px rgba(0, 255, 0, 0.6),
+      0 0 35px rgba(0, 255, 0, 0.4);
+  }
+  to {
+    box-shadow: 
+      0 0 20px rgba(0, 255, 0, 1),
+      0 0 35px rgba(0, 255, 0, 0.8),
+      0 0 50px rgba(0, 255, 0, 0.6);
+  }
+}
+
+/* Efecto hover para elementos del menú en modo hacker */
+.theme-hacker nav a:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]),
+.theme-hacker nav button:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]) {
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.5) !important;
+  border: 1px solid #00ff00 !important;
+  background-color: #0a0a0a !important;
+}
+
+/* Efecto para submenú activo en modo hacker */
+.theme-hacker nav .bg-primary-600,
+.theme-hacker nav a[class*="bg-primary-600"] {
+  box-shadow: 
+    0 0 10px rgba(0, 255, 0, 0.6),
+    0 0 20px rgba(0, 255, 0, 0.4),
+    0 0 30px rgba(0, 255, 0, 0.3),
+    inset 0 0 10px rgba(0, 255, 0, 0.15) !important;
+  border: 2px solid #00ff00 !important;
+  background-color: #000000 !important;
+  color: #00ff00 !important;
+  animation: hackerGlow 2s ease-in-out infinite alternate !important;
+}
+
 .theme-dark [class*="bg-gray"]:not([class*="bg-gray-900"]):not([class*="bg-gray-800"]):not([class*="bg-gray-700"]),
 .theme-dark [class*="bg-slate"]:not([class*="bg-slate-900"]):not([class*="bg-slate-800"]):not([class*="bg-slate-700"]),
 .theme-dark [class*="bg-zinc"]:not([class*="bg-zinc-900"]):not([class*="bg-zinc-800"]):not([class*="bg-zinc-700"]) {
