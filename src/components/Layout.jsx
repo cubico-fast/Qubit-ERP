@@ -35,8 +35,9 @@ const Layout = ({ children }) => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // El sidebar solo participa en el layout flex cuando está abierto O cuando estamos en desktop
-  const sidebarInLayout = sidebarOpen || isDesktop
+  // El sidebar solo participa en el layout flex cuando está abierto Y estamos en desktop
+  // En móvil, siempre debe estar en position fixed (abierto o cerrado)
+  const sidebarInFlexLayout = sidebarOpen && isDesktop
 
   return (
     <div 
@@ -51,15 +52,13 @@ const Layout = ({ children }) => {
         padding: 0
       }}
     >
-      {/* Sidebar - Solo en layout flex cuando sidebarInLayout es true */}
-      {sidebarInLayout && (
-        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      {/* Sidebar - En layout flex solo cuando está abierto Y estamos en desktop */}
+      {sidebarInFlexLayout && (
+        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} isMobile={!isDesktop} />
       )}
-      {/* Sidebar fijo para móvil cuando está cerrado (fuera del layout flex) */}
-      {!sidebarInLayout && (
-        <div style={{ position: 'fixed', left: '-100%', zIndex: 30, pointerEvents: 'none' }}>
-          <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-        </div>
+      {/* Sidebar fixed para móvil (abierto o cerrado) - siempre clickeable cuando está abierto */}
+      {!sidebarInFlexLayout && (
+        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} isMobile={!isDesktop} />
       )}
       
       {/* Botón para mostrar sidebar cuando está oculto (solo móvil) */}

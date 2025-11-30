@@ -22,7 +22,7 @@ import {
   Megaphone
 } from 'lucide-react'
 
-const Sidebar = ({ isOpen, setIsOpen }) => {
+const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
   const location = useLocation()
   const [arrastrando, setArrastrando] = useState(false)
   const inicioArrastreRef = useRef(null)
@@ -132,10 +132,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && (
+      {isOpen && isMobile && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50"
           onClick={() => setIsOpen(false)}
+          style={{ zIndex: 45 }}
         />
       )}
 
@@ -152,11 +153,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             : 'lg:translate-x-0 -translate-x-full'
         } ${
           !isOpen ? 'lg:overflow-hidden' : ''
-        } ${
-          !isOpen ? 'lg:relative fixed' : ''
         }`}
         style={{
           background: 'var(--color-sidebar)',
+          // En móvil, siempre usar position fixed (abierto o cerrado)
+          // En desktop, usar relative cuando está abierto, fixed cuando está cerrado
+          position: isMobile ? 'fixed' : (isOpen ? 'relative' : 'fixed'),
+          zIndex: (isMobile && isOpen) ? 50 : (isMobile ? 30 : 'auto'),
           ...(isOpen ? {} : { 
             width: '0', 
             minWidth: '0', 
