@@ -155,17 +155,31 @@ const ConfiguracionMarketing = () => {
         throw new Error('No se encontraron páginas de Facebook vinculadas a tu cuenta')
       }
 
+      console.log(`📋 Páginas encontradas: ${paginas.length}`, paginas.map(p => p.name))
+
+      // Si solo hay una página, mostrar advertencia si el usuario espera ver más
+      if (paginas.length === 1) {
+        console.warn('⚠️ Solo se encontró 1 página. Si esperas ver más páginas, verifica que:')
+        console.warn('1. Todas las páginas estén asociadas a tu cuenta de Facebook')
+        console.warn('2. Tengas permisos de administrador en todas las páginas')
+        console.warn('3. El token tenga el permiso pages_show_list')
+      }
+
       // Verificar qué páginas tienen Instagram vinculado
       const paginasConInfo = await Promise.all(
         paginas.map(async (pagina) => {
           let tieneInstagram = false
+          let instagramAccount = null
           try {
-            const instagramAccount = await obtenerCuentaInstagram(pagina.id, pagina.access_token)
+            instagramAccount = await obtenerCuentaInstagram(pagina.id, pagina.access_token)
             tieneInstagram = !!instagramAccount
-            return { ...pagina, tieneInstagram, instagramAccount }
+            if (instagramAccount) {
+              console.log(`✅ Página "${pagina.name}" tiene Instagram vinculado: @${instagramAccount.username}`)
+            }
           } catch (e) {
-            return { ...pagina, tieneInstagram: false, instagramAccount: null }
+            console.log(`ℹ️ Página "${pagina.name}" no tiene Instagram vinculado`)
           }
+          return { ...pagina, tieneInstagram, instagramAccount }
         })
       )
 
@@ -183,7 +197,11 @@ const ConfiguracionMarketing = () => {
 
       // Si solo hay una página, seleccionarla automáticamente
       if (paginasConInfo.length === 1) {
-        await seleccionarPagina(paginasConInfo[0])
+        const pagina = paginasConInfo[0]
+        await seleccionarPagina(pagina)
+        if (!pagina.tieneInstagram) {
+          setSuccess(`✅ Página "${pagina.name}" conectada. ${paginas.length === 1 ? 'Si tienes otra página con Instagram vinculado, asegúrate de que esté asociada a tu cuenta de Facebook y que tengas permisos de administrador.' : ''}`)
+        }
       } else {
         // Si hay múltiples páginas, buscar la que tiene Instagram vinculado
         const paginaConInstagram = paginasConInfo.find(p => p.tieneInstagram)

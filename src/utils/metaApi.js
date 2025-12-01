@@ -165,8 +165,11 @@ export const iniciarAutenticacionMeta = async (platform = 'facebook') => {
     const FB = await inicializarFacebookSDK(META_APP_ID)
 
     // Scopes necesarios para Facebook e Instagram
+    // pages_show_list: Ver todas las páginas del usuario
+    // pages_read_engagement: Leer métricas de páginas
+    // pages_manage_metadata: Gestionar metadatos de páginas
     const scopes = platform === 'instagram' 
-      ? 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement'
+      ? 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,pages_manage_metadata'
       : 'pages_show_list,pages_read_engagement,pages_manage_metadata'
 
     // Usar FB.login() para obtener el token
@@ -191,28 +194,44 @@ export const iniciarAutenticacionMeta = async (platform = 'facebook') => {
 
 /**
  * Obtener páginas de Facebook del usuario (directo desde Graph API)
+ * Incluye paginación para obtener todas las páginas disponibles
  * @param {string} accessToken - Token de acceso del usuario
  */
 export const obtenerPaginasFacebook = async (accessToken) => {
   try {
-    // Obtener páginas directamente desde Graph API
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/me/accounts?access_token=${accessToken}&fields=id,name,category,access_token`,
-      {
+    let allPages = []
+    let nextUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${accessToken}&fields=id,name,category,access_token&limit=100`
+    
+    // Obtener todas las páginas usando paginación
+    while (nextUrl) {
+      const response = await fetch(nextUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         }
-      }
-    )
+      })
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error?.message || 'Error al obtener páginas')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error?.message || 'Error al obtener páginas')
+      }
+
+      const data = await response.json()
+      
+      if (data.data && data.data.length > 0) {
+        allPages = allPages.concat(data.data)
+      }
+      
+      // Verificar si hay más páginas (paginación)
+      if (data.paging && data.paging.next) {
+        nextUrl = data.paging.next
+      } else {
+        nextUrl = null
+      }
     }
 
-    const data = await response.json()
-    return data.data || []
+    console.log(`✅ Se encontraron ${allPages.length} página(s) de Facebook:`, allPages.map(p => p.name))
+    return allPages
   } catch (error) {
     console.error('Error al obtener páginas de Facebook:', error)
     throw error
