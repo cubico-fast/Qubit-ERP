@@ -211,14 +211,46 @@ const ConfiguracionMarketing = () => {
       }
 
       if (paginas.length === 0) {
-        // Proporcionar mensaje más útil con posibles soluciones
+        // Verificar permisos específicamente antes de dar el error
+        console.log('🔍 Verificando permisos específicamente...')
+        try {
+          const permCheck = await fetch(
+            `https://graph.facebook.com/v18.0/me/permissions?access_token=${token}`
+          )
+          const permData = await permCheck.json()
+          const permisos = permData.data || []
+          const tienePagesShowList = permisos.some(p => p.permission === 'pages_show_list' && p.status === 'granted')
+          
+          console.log('🔍 Permisos encontrados:', permisos.map(p => `${p.permission}: ${p.status}`))
+          console.log('🔍 ¿Tiene pages_show_list?:', tienePagesShowList ? '✅ SÍ' : '❌ NO')
+          
+          if (!tienePagesShowList) {
+            const mensajeError = '❌ El token NO tiene el permiso "pages_show_list" concedido.\n\n' +
+              'SOLUCIÓN:\n' +
+              '1. Haz clic en "Desconectar" (si está conectado)\n' +
+              '2. Haz clic en "Conectar Facebook" de nuevo\n' +
+              '3. Cuando aparezca el popup de Facebook, asegúrate de:\n' +
+              '   - Autorizar TODOS los permisos\n' +
+              '   - Especialmente el permiso "pages_show_list"\n' +
+              '   - Si ves "Editar configuración", haz clic y autoriza todos los permisos\n' +
+              '4. Si ya autorizaste antes, puede que necesites revocar permisos y volver a autorizar\n\n' +
+              'Para revocar permisos: Ve a https://www.facebook.com/settings?tab=business_tools y elimina la app, luego vuelve a conectar.'
+            throw new Error(mensajeError)
+          }
+        } catch (permError) {
+          console.error('Error al verificar permisos:', permError)
+        }
+        
+        // Si tiene el permiso pero aún así no hay páginas
         const mensajeError = 'No se encontraron páginas de Facebook vinculadas a tu cuenta.\n\n' +
           'Posibles causas:\n' +
           '1. No tienes páginas de Facebook creadas\n' +
           '2. No eres administrador o editor de ninguna página\n' +
-          '3. El token no tiene el permiso "pages_show_list"\n' +
-          '4. Las páginas no están asociadas a tu cuenta personal de Facebook\n\n' +
-          'Solución: Ve a https://www.facebook.com/pages y verifica que tengas páginas donde seas administrador.'
+          '3. Las páginas no están asociadas a tu cuenta personal de Facebook\n\n' +
+          'SOLUCIÓN:\n' +
+          '1. Ve a https://www.facebook.com/pages y verifica que tengas páginas donde seas administrador\n' +
+          '2. Si tienes páginas, asegúrate de que estén asociadas a tu cuenta personal de Facebook\n' +
+          '3. Verifica que tengas el rol de "Administrador" o "Editor" en las páginas'
         throw new Error(mensajeError)
       }
 
