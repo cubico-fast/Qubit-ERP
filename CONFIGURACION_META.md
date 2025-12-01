@@ -29,7 +29,9 @@
 2. Ve a **Settings** → **Secrets and variables** → **Actions**
 3. Haz clic en **New repository secret**
 4. Nombre: `VITE_META_APP_ID`
-5. Valor: Pega tu App ID de Facebook
+5. Valor: Pega **SOLO el número** del App ID de Facebook (ejemplo: `2954507758068155`)
+   - ⚠️ **IMPORTANTE**: NO incluyas comillas, NO incluyas objetos JSON, solo el número
+   - Si tu App ID es `2954507758068155`, escribe exactamente: `2954507758068155`
 6. Haz clic en **Add secret**
 
 ### 5. Redesplegar

@@ -3,7 +3,43 @@
  * Autenticación OAuth directa desde el frontend
  */
 
-const META_APP_ID = import.meta.env.VITE_META_APP_ID
+// Función helper para obtener y validar el App ID
+const getMetaAppId = () => {
+  const appId = import.meta.env.VITE_META_APP_ID
+  
+  // Si es undefined o null, retornar null
+  if (!appId) {
+    return null
+  }
+  
+  // Si es un objeto (JSON stringificado), intentar parsearlo
+  if (typeof appId === 'object') {
+    try {
+      const parsed = typeof appId === 'string' ? JSON.parse(appId) : appId
+      // Si tiene una propiedad 'id', usar esa
+      if (parsed && parsed.id) {
+        return String(parsed.id)
+      }
+      // Si es un objeto con otros campos, intentar extraer el ID
+      return null
+    } catch (e) {
+      console.error('Error al parsear META_APP_ID:', e)
+      return null
+    }
+  }
+  
+  // Si es un string, limpiarlo y validarlo
+  const cleanId = String(appId).trim()
+  
+  // Validar que sea un número (App IDs de Facebook son numéricos)
+  if (!/^\d+$/.test(cleanId)) {
+    console.error('META_APP_ID no es un número válido:', cleanId)
+    return null
+  }
+  
+  return cleanId
+}
+
 const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback`
 
 /**
@@ -12,14 +48,17 @@ const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includ
  * @param {string} platform - 'facebook' o 'instagram'
  */
 export const iniciarAutenticacionMeta = (platform = 'facebook') => {
+  const META_APP_ID = getMetaAppId()
+  
   if (!META_APP_ID) {
-    alert('Error: VITE_META_APP_ID no está configurado.\n\n' +
+    alert('Error: VITE_META_APP_ID no está configurado o no es válido.\n\n' +
       'Para configurarlo:\n' +
       '1. Ve a tu repositorio en GitHub\n' +
       '2. Settings → Secrets and variables → Actions\n' +
       '3. Agrega un nuevo secret llamado: VITE_META_APP_ID\n' +
-      '4. Ingresa tu App ID de Facebook\n' +
-      '5. Vuelve a ejecutar el workflow de GitHub Actions\n\n' +
+      '4. Ingresa SOLO el número del App ID (ejemplo: 2954507758068155)\n' +
+      '5. NO incluyas comillas ni objetos JSON\n' +
+      '6. Vuelve a ejecutar el workflow de GitHub Actions\n\n' +
       'Obtén tu App ID en: https://developers.facebook.com/apps/')
     return
   }
@@ -81,11 +120,11 @@ export const obtenerPaginasFacebook = async (accessToken) => {
  * @param {string} code - Código de autorización de Facebook
  */
 export const intercambiarCodigoPorToken = async (code) => {
-  const META_APP_ID = import.meta.env.VITE_META_APP_ID
+  const META_APP_ID = getMetaAppId()
   const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback`
   
   if (!META_APP_ID) {
-    throw new Error('VITE_META_APP_ID no está configurado')
+    throw new Error('VITE_META_APP_ID no está configurado o no es válido')
   }
 
   try {
