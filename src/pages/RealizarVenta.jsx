@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Save, RotateCcw, X, Plus, Search, FileText, DollarSign, Calendar, User, ShoppingCart, CheckSquare, Square, ChevronLeft, ChevronRight, GripVertical, Edit, UserPlus } from 'lucide-react'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { getCurrentDateSync, formatDate, getNetworkTime } from '../utils/dateUtils'
-import { saveVenta, getProductos, getClientes, saveCliente } from '../utils/firebaseUtils'
+import { saveVenta, getProductos, getClientes, saveCliente, updateProducto } from '../utils/firebaseUtils'
 
 const RealizarVenta = () => {
   const { formatCurrency } = useCurrency()
@@ -680,8 +680,29 @@ const RealizarVenta = () => {
       // Guardar en Firebase
       await saveVenta(ventaData)
       
+      // Actualizar el stock de los productos vendidos
+      const productos = await getProductos()
+      
+      for (const productoVendido of productosSeleccionados) {
+        const productoId = productoVendido.id
+        const cantidadVendida = parseInt(productoVendido.cantidad) || 1
+        
+        // Buscar el producto original en la base de datos
+        const productoOriginal = productos.find(p => p.id === productoId)
+        
+        if (productoOriginal) {
+          const stockActual = productoOriginal.stock || 0
+          const nuevoStock = Math.max(0, stockActual - cantidadVendida) // No permitir stock negativo
+          
+          // Actualizar el stock del producto
+          await updateProducto(productoId, {
+            stock: nuevoStock
+          })
+        }
+      }
+      
       // Mostrar mensaje de éxito
-      alert('✅ Venta guardada exitosamente en el registro de ventas.')
+      alert('✅ Venta guardada exitosamente. El stock de los productos ha sido actualizado.')
       
       // Preguntar si desea ver el registro o hacer otra venta
       const verRegistro = window.confirm('¿Deseas ver el registro de ventas ahora?')

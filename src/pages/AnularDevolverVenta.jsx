@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, XCircle, RotateCcw, FileText, Package, X } from 'lucide-react'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { getVentas, updateVenta } from '../utils/firebaseUtils'
+import { getVentas, updateVenta, getProductos, updateProducto } from '../utils/firebaseUtils'
 import { formatDate } from '../utils/dateUtils'
 
 const AnularDevolverVenta = () => {
@@ -105,18 +105,146 @@ const AnularDevolverVenta = () => {
       return
     }
 
+    if (!ventaSeleccionada) return
+
     try {
-      // Aquí se implementaría la lógica de devolución
-      // Por ahora, solo mostramos un mensaje
-      alert(`Devolución registrada para ${productosConDevolucion.length} producto(s)`)
+      // Calcular los nuevos productos después de la devolución
+      const nuevosProductos = ventaSeleccionada.productos
+        .map((producto, index) => {
+          const productoDevolver = productosDevolver[index]
+          const cantidadDevolver = productoDevolver.cantidadDevolver || 0
+          const nuevaCantidad = producto.cantidad - cantidadDevolver
+          
+          // Si la cantidad llega a 0 o menos, no incluir el producto
+          if (nuevaCantidad <= 0) {
+            return null
+          }
+          
+          // Calcular el descuento proporcional (si había descuento, reducirlo proporcionalmente)
+          const descuentoOriginal = producto.descuentoMonto || 0
+          const descuentoPorUnidad = descuentoOriginal / producto.cantidad
+          const nuevoDescuento = descuentoPorUnidad * nuevaCantidad
+          
+          // Recalcular el subtotal del producto
+          const nuevoSubtotal = (producto.precioUnitario * nuevaCantidad) - nuevoDescuento
+          
+          return {
+            ...producto,
+            cantidad: nuevaCantidad,
+            descuentoMonto: nuevoDescuento,
+            subtotal: nuevoSubtotal
+          }
+        })
+        .filter(p => p !== null) // Eliminar productos con cantidad 0
+
+      // Si se devolvieron todos los productos, anular la venta
+      if (nuevosProductos.length === 0) {
+        const confirmar = window.confirm('Se devolverán todos los productos. ¿Desea anular la venta completa?')
+        if (confirmar) {
+          await updateVenta(ventaSeleccionada.id, {
+            estado: 'Anulada',
+            fechaAnulacion: new Date().toISOString()
+          })
+          setVentas(ventas.filter(v => v.id !== ventaSeleccionada.id))
+          setShowModal(false)
+          setVentaSeleccionada(null)
+          setModoModal(null)
+          setProductosDevolver([])
+          alert('Venta anulada exitosamente (todos los productos fueron devueltos)')
+          return
+        } else {
+          return
+        }
+      }
+
+      // Recalcular totales de la venta
+      const TASA_IMPUESTO = 0.1525 // 15.25%
+      
+      // Calcular el total de todos los productos (precio × cantidad - descuento)
+      const totalProductos = nuevosProductos.reduce((sum, p) => {
+        const precioConImpuesto = parseFloat(p.precioUnitario) || 0
+        const cantidad = parseInt(p.cantidad) || 1
+        const descuento = parseFloat(p.descuentoMonto) || 0
+        return sum + ((precioConImpuesto * cantidad) - descuento)
+      }, 0)
+      
+      const descuentoGeneral = parseFloat(ventaSeleccionada.descuento) || 0
+      const totalDespuesDescuento = totalProductos - descuentoGeneral
+      
+      // Subtotal sin impuesto
+      const subtotalFinal = totalDespuesDescuento - (totalDespuesDescuento * TASA_IMPUESTO)
+      
+      // Base imponible = subtotal
+      const baseImponible = subtotalFinal
+      
+      // Impuesto = Total - Subtotal
+      const impuestoFinal = totalDespuesDescuento - subtotalFinal
+      
+      const icbperFinal = parseFloat(ventaSeleccionada.icbper) || 0
+      const totalFinal = subtotalFinal + impuestoFinal + icbperFinal
+
+      // Actualizar el stock de los productos devueltos
+      const productos = await getProductos()
+      
+      for (const productoDevolver of productosConDevolucion) {
+        // Buscar el producto por productoId o id
+        const productoId = productoDevolver.productoId || productoDevolver.id
+        const productoOriginal = productos.find(p => p.id === productoId)
+        
+        if (productoOriginal) {
+          const cantidadDevolver = productoDevolver.cantidadDevolver || 0
+          const nuevoStock = (productoOriginal.stock || 0) + cantidadDevolver
+          
+          await updateProducto(productoOriginal.id, {
+            stock: nuevoStock
+          })
+        }
+      }
+
+      // Actualizar la venta con los nuevos datos
+      const ventaActualizada = {
+        productos: nuevosProductos,
+        totalProductos: nuevosProductos.length,
+        subtotal: subtotalFinal,
+        baseImponible: baseImponible,
+        impuesto: impuestoFinal,
+        total: totalFinal,
+        fechaDevolucion: new Date().toISOString(),
+        // Mantener otros campos
+        fecha: ventaSeleccionada.fecha,
+        vendedor: ventaSeleccionada.vendedor,
+        local: ventaSeleccionada.local,
+        almacen: ventaSeleccionada.almacen,
+        moneda: ventaSeleccionada.moneda,
+        tipoCambio: ventaSeleccionada.tipoCambio,
+        tipoComprobante: ventaSeleccionada.tipoComprobante,
+        descuento: descuentoGeneral,
+        icbper: icbperFinal,
+        retencion: ventaSeleccionada.retencion,
+        totalRetenido: ventaSeleccionada.totalRetenido,
+        formaPago: ventaSeleccionada.formaPago,
+        estado: ventaSeleccionada.estado
+      }
+      
+      await updateVenta(ventaSeleccionada.id, ventaActualizada)
+      
+      // Actualizar la lista local
+      const ventaActualizadaEnLista = {
+        ...ventaSeleccionada,
+        ...ventaActualizada
+      }
+      setVentas(ventas.map(v => v.id === ventaSeleccionada.id ? ventaActualizadaEnLista : v))
       
       setShowModal(false)
       setVentaSeleccionada(null)
       setModoModal(null)
       setProductosDevolver([])
+      
+      const totalUnidadesDevolver = productosConDevolucion.reduce((sum, p) => sum + (p.cantidadDevolver || 0), 0)
+      alert(`Devolución exitosa: ${totalUnidadesDevolver} unidad(es) devuelta(s). La venta ahora tiene un total de ${formatCurrency(totalFinal)}`)
     } catch (error) {
       console.error('Error al procesar devolución:', error)
-      alert('Error al procesar la devolución')
+      alert('Error al procesar la devolución: ' + error.message)
     }
   }
 
@@ -386,31 +514,71 @@ const AnularDevolverVenta = () => {
                 </div>
               </div>
 
-              {/* Resumen */}
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">
-                    Total productos a devolver: {productosDevolver.filter(p => p.cantidadDevolver > 0).length}
-                  </span>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setShowModal(false)
-                        setVentaSeleccionada(null)
-                        setModoModal(null)
-                        setProductosDevolver([])
-                      }}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleConfirmarDevolucion}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Confirmar Devolución
-                    </button>
-                  </div>
+              {/* Resumen de Devolución */}
+              <div className="border-t border-gray-200 pt-4 space-y-3">
+                {/* Calcular resumen de la devolución */}
+                {(() => {
+                  const productosConDevolucion = productosDevolver.filter(p => p.cantidadDevolver > 0)
+                  const totalUnidadesDevolver = productosConDevolucion.reduce((sum, p) => sum + (p.cantidadDevolver || 0), 0)
+                  const montoDevolver = productosConDevolucion.reduce((sum, p) => {
+                    const precioUnitario = p.precioUnitario || 0
+                    const cantidadDevolver = p.cantidadDevolver || 0
+                    const descuentoPorUnidad = (p.descuentoMonto || 0) / (p.cantidad || 1)
+                    return sum + ((precioUnitario * cantidadDevolver) - (descuentoPorUnidad * cantidadDevolver))
+                  }, 0)
+                  
+                  const TASA_IMPUESTO = 0.1525
+                  const subtotalDevolver = montoDevolver - (montoDevolver * TASA_IMPUESTO)
+                  const impuestoDevolver = montoDevolver - subtotalDevolver
+                  const totalDevolver = subtotalDevolver + impuestoDevolver
+                  
+                  const nuevoTotal = (ventaSeleccionada.total || 0) - totalDevolver
+                  
+                  return (
+                    <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                      <h5 className="font-semibold text-gray-900 mb-2">Resumen de Devolución</h5>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-gray-600">Unidades a devolver:</span>
+                          <span className="font-medium text-gray-900 ml-2">{totalUnidadesDevolver}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Monto a devolver:</span>
+                          <span className="font-medium text-gray-900 ml-2">{formatCurrency(totalDevolver)}</span>
+                        </div>
+                        <div className="col-span-2 border-t border-blue-200 pt-2 mt-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Total actual de la venta:</span>
+                            <span className="font-semibold text-gray-900">{formatCurrency(ventaSeleccionada.total || 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-gray-600">Nuevo total después de devolución:</span>
+                            <span className="font-bold text-blue-700 text-lg">{formatCurrency(nuevoTotal)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setShowModal(false)
+                      setVentaSeleccionada(null)
+                      setModoModal(null)
+                      setProductosDevolver([])
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleConfirmarDevolucion}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Confirmar Devolución
+                  </button>
                 </div>
               </div>
             </div>
