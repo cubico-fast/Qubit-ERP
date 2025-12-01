@@ -391,7 +391,6 @@ const RealizarVenta = () => {
     
     // El precio ingresado incluye el impuesto, extraer el precio sin impuesto
     // Fórmula: precio sin impuesto = precio con impuesto - (precio con impuesto * tasa)
-    const cantidadNumerica = parseFloat(cantidadProducto) || 0
     const precioSinImpuesto = precioUnitarioSeleccionado - (precioUnitarioSeleccionado * TASA_IMPUESTO)
     const subtotalSinImpuesto = (precioSinImpuesto * cantidadNumerica) - descuentoMonto
 

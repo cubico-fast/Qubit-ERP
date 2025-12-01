@@ -78,8 +78,8 @@ export default defineConfig({
         var repoName = '/CUBIC-CRM';
         var basePath = isGitHubPages ? repoName + '/' : '/';
         
-        // Si estamos en una página 404, intentar restaurar la ruta desde sessionStorage
-        // o usar el referrer como fallback
+        // Solo ajustar la URL si estamos en una página 404
+        // No hacer nada si estamos cargando index.html normalmente
         if (path.includes('404.html')) {
           // Intentar obtener la ruta guardada en sessionStorage
           var savedPath = sessionStorage.getItem('ghp_404_redirect');
@@ -87,60 +87,35 @@ export default defineConfig({
             path = savedPath;
             sessionStorage.removeItem('ghp_404_redirect');
           } else {
-            // Si no hay ruta guardada, intentar usar el referrer
-            var referrer = document.referrer;
-            if (referrer && referrer.includes(window.location.origin)) {
-              try {
-                var referrerUrl = new URL(referrer);
-                var referrerPath = referrerUrl.pathname;
-                // Si el referrer tiene una ruta válida y no es 404.html, usarla
-                if (referrerPath && referrerPath !== path && !referrerPath.includes('404.html') && !referrerPath.includes('index.html')) {
-                  path = referrerPath;
-                } else {
-                  // Si no hay referrer válido, usar la raíz
-                  path = basePath;
-                }
-              } catch (e) {
-                // Si falla, usar la raíz
-                path = basePath;
-              }
-            } else {
-              // Si no hay referrer, usar la raíz
+            // Si no hay ruta guardada, remover 404.html y usar la raíz
+            path = path.replace('/404.html', '');
+            if (!path || path === repoName || path === repoName + '/') {
               path = basePath;
+            }
+          }
+          
+          // Construir la nueva URL completa
+          var newPath = path + search + hash;
+          
+          // Usar history.replaceState para cambiar la URL sin recargar
+          if (window.history && window.history.replaceState) {
+            try {
+              if (originalPath !== newPath) {
+                window.history.replaceState(null, '', newPath);
+              }
+            } catch (e) {
+              console.warn('Error al ajustar URL:', e);
             }
           }
         } else {
           // Si no estamos en 404.html, guardar la ruta actual en sessionStorage
           // para que esté disponible si se carga un 404
           if (isGitHubPages && path && !path.includes('index.html') && !path.includes('404.html')) {
-            sessionStorage.setItem('ghp_404_redirect', path);
-          }
-          
-          // Asegurarnos de que la ruta tenga el prefijo correcto
-          if (isGitHubPages) {
-            if (!path.startsWith(repoName)) {
-              if (path === '/') {
-                path = basePath;
-              } else {
-                path = repoName + (path.startsWith('/') ? path : '/' + path);
-              }
+            try {
+              sessionStorage.setItem('ghp_404_redirect', path);
+            } catch (e) {
+              // Si sessionStorage no está disponible, ignorar
             }
-          }
-        }
-        
-        // Construir la nueva URL completa
-        var newPath = path + search + hash;
-        
-        // Usar history.replaceState para cambiar la URL sin recargar
-        // Esto permite que React Router maneje la ruta correctamente
-        if (window.history && window.history.replaceState) {
-          try {
-            // Solo ajustar si la ruta es diferente
-            if (originalPath !== newPath) {
-              window.history.replaceState(null, '', newPath);
-            }
-          } catch (e) {
-            console.warn('Error al ajustar URL:', e);
           }
         }
       })();
