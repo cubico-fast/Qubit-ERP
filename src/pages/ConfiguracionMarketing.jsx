@@ -55,7 +55,7 @@ const ConfiguracionMarketing = () => {
     cargarConfiguracion()
   }, [])
 
-  // Verificar si hay código o token en la URL (callback de OAuth)
+  // Verificar si hay código o token en la URL (callback de OAuth - para compatibilidad con método anterior)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
@@ -72,7 +72,7 @@ const ConfiguracionMarketing = () => {
       return
     }
 
-    // Si hay código, intercambiarlo por token
+    // Si hay código (método anterior con redirección), intentar procesarlo
     if (code) {
       procesarCodigo(code, platform)
     } else if (token && platform) {
@@ -94,7 +94,21 @@ const ConfiguracionMarketing = () => {
       await procesarToken(accessToken, platform)
     } catch (error) {
       console.error('Error al procesar código:', error)
-      setError(`Error al procesar autorización: ${error.message}. Nota: El intercambio de código por token normalmente requiere un App Secret en el backend por seguridad.`)
+      const errorMessage = error.message || 'Error desconocido'
+      
+      // Mensaje más detallado según el tipo de error
+      let mensajeError = `Error al procesar autorización: ${errorMessage}`
+      
+      if (errorMessage.includes('App Secret') || errorMessage.includes('backend')) {
+        mensajeError += '\n\n💡 Solución: Necesitas configurar un backend para intercambiar el código por token de forma segura. Opciones:\n' +
+          '1. Usar Vercel Functions o Netlify Functions\n' +
+          '2. Usar el JavaScript SDK de Facebook (FB.login)\n' +
+          '3. Configurar un servidor Node.js simple'
+      } else if (errorMessage.includes('Failed to fetch')) {
+        mensajeError += '\n\n💡 Esto puede deberse a restricciones de CORS o que Facebook requiere un backend para el intercambio de tokens.'
+      }
+      
+      setError(mensajeError)
       // Limpiar URL
       window.history.replaceState({}, document.title, window.location.pathname)
       localStorage.removeItem('meta_auth_state')
@@ -146,16 +160,42 @@ const ConfiguracionMarketing = () => {
     }
   }
 
-  const conectarFacebook = () => {
+  const conectarFacebook = async () => {
     setError(null)
     setSuccess(null)
-    iniciarAutenticacionMeta('facebook')
+    setLoading(true)
+
+    try {
+      // Usar el SDK de Facebook para obtener el token directamente
+      const accessToken = await iniciarAutenticacionMeta('facebook')
+      
+      // Procesar el token obtenido
+      await procesarToken(accessToken, 'facebook')
+    } catch (error) {
+      console.error('Error al conectar Facebook:', error)
+      setError(`Error al conectar Facebook: ${error.message || 'Error desconocido'}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const conectarInstagram = () => {
+  const conectarInstagram = async () => {
     setError(null)
     setSuccess(null)
-    iniciarAutenticacionMeta('instagram')
+    setLoading(true)
+
+    try {
+      // Usar el SDK de Facebook para obtener el token directamente
+      const accessToken = await iniciarAutenticacionMeta('instagram')
+      
+      // Procesar el token obtenido
+      await procesarToken(accessToken, 'instagram')
+    } catch (error) {
+      console.error('Error al conectar Instagram:', error)
+      setError(`Error al conectar Instagram: ${error.message || 'Error desconocido'}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const seleccionarPagina = async (pagina) => {
@@ -267,9 +307,10 @@ const ConfiguracionMarketing = () => {
             <ol className="list-decimal list-inside space-y-1 text-sm">
               <li>Crea una app en <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline">Facebook for Developers</a></li>
               <li>Agrega los productos "Instagram Graph API" y "Facebook Login"</li>
-              <li>Configura la URL de redirección: <code className="bg-blue-100 px-1 rounded">{window.location.origin}{window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback</code></li>
-              <li>Agrega las variables de entorno <code className="bg-blue-100 px-1 rounded">VITE_META_APP_ID</code> y <code className="bg-blue-100 px-1 rounded">VITE_META_APP_SECRET</code></li>
-              <li>Asegúrate de que tu cuenta de Instagram sea Business o Creator y esté vinculada a una página de Facebook</li>
+              <li>Agrega el dominio en "App Domains": <code className="bg-blue-100 px-1 rounded">cubico-fast.github.io</code></li>
+              <li>En "Facebook Login" → "Settings", agrega la URL de redirección: <code className="bg-blue-100 px-1 rounded">{window.location.origin}{window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback</code></li>
+              <li>Agrega la variable de entorno <code className="bg-blue-100 px-1 rounded">VITE_META_APP_ID</code> en GitHub Secrets (solo el número del App ID)</li>
+              <li className="text-green-600 font-semibold">✅ Ahora usamos el JavaScript SDK de Facebook, que maneja el OAuth de forma segura sin necesidad de backend.</li>
             </ol>
           </div>
         </div>

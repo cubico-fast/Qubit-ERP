@@ -50,12 +50,101 @@ const getMetaAppId = () => {
 
 const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback`
 
+// Variable para almacenar el estado de inicialización
+let fbSDKInitialized = false
+let fbSDKInitPromise = null
+
 /**
- * Iniciar el flujo de autenticación OAuth con Meta
- * Redirige directamente a Facebook OAuth
- * @param {string} platform - 'facebook' o 'instagram'
+ * Inicializar el SDK de Facebook
+ * @param {string} appId - App ID de Facebook
+ * @returns {Promise} Promise que se resuelve cuando el SDK está listo
  */
-export const iniciarAutenticacionMeta = (platform = 'facebook') => {
+const inicializarFacebookSDK = (appId) => {
+  // Si ya está inicializado, retornar el SDK directamente
+  if (fbSDKInitialized && window.FB) {
+    return Promise.resolve(window.FB)
+  }
+
+  // Si ya hay una inicialización en progreso, retornar esa promesa
+  if (fbSDKInitPromise) {
+    return fbSDKInitPromise
+  }
+
+  // Crear nueva promesa de inicialización
+  fbSDKInitPromise = new Promise((resolve, reject) => {
+    // Si el SDK ya está cargado pero no inicializado
+    if (window.FB && !fbSDKInitialized) {
+      try {
+        window.FB.init({
+          appId: appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        })
+        fbSDKInitialized = true
+        resolve(window.FB)
+        return
+      } catch (error) {
+        reject(error)
+        return
+      }
+    }
+
+    // Si el SDK ya está disponible
+    if (window.FB) {
+      try {
+        window.FB.init({
+          appId: appId,
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        })
+        fbSDKInitialized = true
+        resolve(window.FB)
+        return
+      } catch (error) {
+        reject(error)
+        return
+      }
+    }
+
+    // Esperar a que el SDK se cargue
+    const checkSDK = setInterval(() => {
+      if (window.FB) {
+        clearInterval(checkSDK)
+        try {
+          window.FB.init({
+            appId: appId,
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+          })
+          fbSDKInitialized = true
+          resolve(window.FB)
+        } catch (error) {
+          reject(error)
+        }
+      }
+    }, 100)
+
+    // Timeout después de 10 segundos
+    setTimeout(() => {
+      clearInterval(checkSDK)
+      if (!fbSDKInitialized) {
+        reject(new Error('El SDK de Facebook no se cargó en el tiempo esperado. Asegúrate de que el script del SDK esté incluido en index.html'))
+      }
+    }, 10000)
+  })
+
+  return fbSDKInitPromise
+}
+
+/**
+ * Iniciar el flujo de autenticación OAuth con Meta usando JavaScript SDK
+ * @param {string} platform - 'facebook' o 'instagram'
+ * @returns {Promise<string>} Promise que se resuelve con el access token
+ */
+export const iniciarAutenticacionMeta = async (platform = 'facebook') => {
   const META_APP_ID = getMetaAppId()
   
   if (!META_APP_ID) {
@@ -68,27 +157,36 @@ export const iniciarAutenticacionMeta = (platform = 'facebook') => {
       '5. NO incluyas comillas ni objetos JSON\n' +
       '6. Vuelve a ejecutar el workflow de GitHub Actions\n\n' +
       'Obtén tu App ID en: https://developers.facebook.com/apps/')
-    return
+    throw new Error('VITE_META_APP_ID no está configurado')
   }
 
-  // Guardar el estado en localStorage para verificar después
-  localStorage.setItem('meta_auth_state', platform)
-  
-  // Scopes necesarios para Facebook e Instagram
-  const scopes = platform === 'instagram' 
-    ? 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement'
-    : 'pages_show_list,pages_read_engagement,pages_manage_metadata'
-  
-  // Construir URL de OAuth de Facebook
-  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
-    `client_id=${META_APP_ID}&` +
-    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-    `scope=${encodeURIComponent(scopes)}&` +
-    `response_type=code&` +
-    `state=${platform}`
-  
-  // Redirigir a Facebook OAuth
-  window.location.href = authUrl
+  try {
+    // Inicializar el SDK de Facebook con el App ID
+    const FB = await inicializarFacebookSDK(META_APP_ID)
+
+    // Scopes necesarios para Facebook e Instagram
+    const scopes = platform === 'instagram' 
+      ? 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement'
+      : 'pages_show_list,pages_read_engagement,pages_manage_metadata'
+
+    // Usar FB.login() para obtener el token
+    return new Promise((resolve, reject) => {
+      FB.login((response) => {
+        if (response.authResponse) {
+          // Usuario autorizado, obtener el access token
+          const accessToken = response.authResponse.accessToken
+          resolve(accessToken)
+        } else {
+          // Usuario canceló o hubo un error
+          const errorMessage = response.error?.message || 'El usuario canceló la autorización o hubo un error'
+          reject(new Error(errorMessage))
+        }
+      }, { scope: scopes })
+    })
+  } catch (error) {
+    console.error('Error al inicializar Facebook SDK:', error)
+    throw error
+  }
 }
 
 /**
@@ -137,7 +235,8 @@ export const intercambiarCodigoPorToken = async (code) => {
 
   try {
     // Intentar obtener token de corta duración
-    // NOTA: Esto normalmente requiere App Secret, pero Facebook permite obtener un token básico
+    // NOTA: Facebook requiere App Secret para intercambiar código por token de forma segura
+    // Sin App Secret, esta petición fallará. Se necesita un backend para esto.
     const response = await fetch(
       `https://graph.facebook.com/v18.0/oauth/access_token?` +
       `client_id=${META_APP_ID}&` +
@@ -152,14 +251,27 @@ export const intercambiarCodigoPorToken = async (code) => {
     )
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error?.message || 'Error al intercambiar código por token')
+      const errorData = await response.json().catch(() => ({ error: { message: 'Error desconocido' } }))
+      const errorMessage = errorData.error?.message || 'Error al intercambiar código por token'
+      
+      // Si el error indica que se necesita App Secret, proporcionar mensaje más claro
+      if (errorMessage.includes('secret') || errorMessage.includes('app_secret') || errorMessage.includes('client_secret')) {
+        throw new Error('Se requiere App Secret para intercambiar el código por token. Esto debe hacerse en un backend por seguridad. Por favor, configura un backend (Vercel Functions, Netlify Functions, etc.) o usa el JavaScript SDK de Facebook.')
+      }
+      
+      throw new Error(errorMessage)
     }
 
     const data = await response.json()
     return data.access_token
   } catch (error) {
     console.error('Error al intercambiar código por token:', error)
+    
+    // Si es un error de red (CORS, fetch failed), proporcionar mensaje más claro
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+      throw new Error('No se pudo conectar con Facebook. Esto puede deberse a que se requiere un backend para intercambiar el código por token de forma segura. El App Secret no puede estar en el frontend.')
+    }
+    
     throw error
   }
 }
