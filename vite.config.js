@@ -47,10 +47,10 @@ export default defineConfig({
           let indexContent = readFileSync(indexPath, 'utf-8')
           
           // Ajustar las rutas de los assets para que funcionen desde cualquier ruta
-          // Reemplazar rutas absolutas que empiezan con /assets/ para que sean relativas o con basePath
+          // Reemplazar rutas absolutas que empiezan con /assets/ o /favicon.svg para que sean relativas o con basePath
           const repoName = '/CUBIC-CRM'
           indexContent = indexContent.replace(
-            /(src|href)="\/(assets\/[^"]+)"/g,
+            /(src|href)="\/(assets\/[^"]+|favicon\.svg|vite\.svg)"/g,
             (match, attr, path) => {
               // Si el basePath incluye el repo, mantener la ruta absoluta con el prefijo
               if (basePath.includes('CUBIC-CRM')) {
