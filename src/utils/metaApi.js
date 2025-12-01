@@ -13,7 +13,14 @@ const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includ
  */
 export const iniciarAutenticacionMeta = (platform = 'facebook') => {
   if (!META_APP_ID) {
-    alert('Error: VITE_META_APP_ID no está configurado. Por favor, agrega esta variable de entorno.')
+    alert('Error: VITE_META_APP_ID no está configurado.\n\n' +
+      'Para configurarlo:\n' +
+      '1. Ve a tu repositorio en GitHub\n' +
+      '2. Settings → Secrets and variables → Actions\n' +
+      '3. Agrega un nuevo secret llamado: VITE_META_APP_ID\n' +
+      '4. Ingresa tu App ID de Facebook\n' +
+      '5. Vuelve a ejecutar el workflow de GitHub Actions\n\n' +
+      'Obtén tu App ID en: https://developers.facebook.com/apps/')
     return
   }
 
