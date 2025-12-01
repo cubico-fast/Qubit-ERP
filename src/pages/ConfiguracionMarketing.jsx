@@ -40,6 +40,31 @@ const ConfiguracionMarketing = () => {
           setConfig(configData)
           if (configData.paginaId) {
             setPaginaSeleccionada(configData.paginaId)
+            
+            // Si hay una página conectada pero no hay Instagram, intentar obtenerlo
+            if (!configData.instagramAccountId && configData.paginaAccessToken) {
+              try {
+                const instagramAccount = await obtenerCuentaInstagram(
+                  configData.paginaId,
+                  configData.paginaAccessToken
+                )
+                if (instagramAccount) {
+                  setCuentaInstagram(instagramAccount)
+                  // Actualizar configuración con Instagram
+                  const configActualizada = {
+                    ...configData,
+                    instagramAccountId: instagramAccount.id,
+                    instagramUsername: instagramAccount.username,
+                    updatedAt: new Date().toISOString()
+                  }
+                  await guardarConfiguracionMeta(configActualizada)
+                  setConfig(configActualizada)
+                }
+              } catch (igError) {
+                console.warn('No se pudo obtener cuenta de Instagram automáticamente:', igError)
+                // No es crítico, continuar sin Instagram
+              }
+            }
           }
           if (configData.instagramAccountId) {
             setCuentaInstagram({
@@ -415,7 +440,78 @@ const ConfiguracionMarketing = () => {
               <p className="text-sm text-gray-600">
                 Conecta tu cuenta de Instagram Business para ver métricas.
               </p>
-              {config?.userAccessToken && paginasFacebook.length > 0 ? (
+              {config?.paginaId && config?.paginaAccessToken ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500 mb-2">
+                    Tu página de Facebook "{config.paginaNombre}" ya está conectada. 
+                    {config.paginaAccessToken ? ' Intentando obtener Instagram vinculado...' : ' Haz clic para buscar Instagram vinculado.'}
+                  </p>
+                  <button
+                    onClick={async () => {
+                      setLoading(true)
+                      try {
+                        const instagramAccount = await obtenerCuentaInstagram(
+                          config.paginaId,
+                          config.paginaAccessToken
+                        )
+                        if (instagramAccount) {
+                          setCuentaInstagram(instagramAccount)
+                          const configActualizada = {
+                            ...config,
+                            instagramAccountId: instagramAccount.id,
+                            instagramUsername: instagramAccount.username,
+                            updatedAt: new Date().toISOString()
+                          }
+                          await guardarConfiguracionMeta(configActualizada)
+                          setConfig(configActualizada)
+                          setSuccess('✅ Instagram conectado exitosamente.')
+                        } else {
+                          setError('No se encontró una cuenta de Instagram Business vinculada a esta página de Facebook. Asegúrate de que tu cuenta de Instagram sea Business o Creator y esté vinculada a la página.')
+                        }
+                      } catch (error) {
+                        console.error('Error al obtener Instagram:', error)
+                        setError(`Error al obtener Instagram: ${error.message || 'Asegúrate de que tu cuenta de Instagram sea Business o Creator y esté vinculada a la página de Facebook.'}`)
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    disabled={loading}
+                    className="w-full px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader className="animate-spin" size={18} />
+                        Buscando Instagram...
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon size={18} />
+                        Buscar Instagram Vinculado
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-400 mt-2">
+                    O reconecta con permisos de Instagram:
+                  </p>
+                  <button
+                    onClick={conectarInstagram}
+                    disabled={loading}
+                    className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader className="animate-spin" size={18} />
+                        Conectando...
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon size={18} />
+                        Reconectar con Instagram
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : config?.userAccessToken && paginasFacebook.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-xs text-gray-500">Selecciona una página de Facebook vinculada a Instagram:</p>
                   {paginasFacebook.map((pagina) => (
