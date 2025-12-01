@@ -1,44 +1,66 @@
 /**
  * Utilidades para interactuar con Meta Graph API (Facebook/Instagram)
- * Usa el backend para manejar la autenticación OAuth de forma segura
+ * Autenticación OAuth directa desde el frontend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const META_APP_ID = import.meta.env.VITE_META_APP_ID
+const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback`
 
 /**
  * Iniciar el flujo de autenticación OAuth con Meta
- * Redirige al backend que maneja la autenticación de forma segura
+ * Redirige directamente a Facebook OAuth
  * @param {string} platform - 'facebook' o 'instagram'
  */
 export const iniciarAutenticacionMeta = (platform = 'facebook') => {
+  if (!META_APP_ID) {
+    alert('Error: VITE_META_APP_ID no está configurado. Por favor, agrega esta variable de entorno.')
+    return
+  }
+
   // Guardar el estado en localStorage para verificar después
   localStorage.setItem('meta_auth_state', platform)
   
-  // Redirigir al backend que maneja OAuth
-  window.location.href = `${API_BASE_URL}/marketing/auth/${platform}`
+  // Scopes necesarios para Facebook e Instagram
+  const scopes = platform === 'instagram' 
+    ? 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement'
+    : 'pages_show_list,pages_read_engagement,pages_manage_metadata'
+  
+  // Construir URL de OAuth de Facebook
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+    `client_id=${META_APP_ID}&` +
+    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+    `scope=${encodeURIComponent(scopes)}&` +
+    `response_type=code&` +
+    `state=${platform}`
+  
+  // Redirigir a Facebook OAuth
+  window.location.href = authUrl
 }
 
 /**
- * Obtener páginas de Facebook del usuario (usando backend)
+ * Obtener páginas de Facebook del usuario (directo desde Graph API)
  * @param {string} accessToken - Token de acceso del usuario
  */
 export const obtenerPaginasFacebook = async (accessToken) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/marketing/pages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ accessToken })
-    })
+    // Obtener páginas directamente desde Graph API
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/me/accounts?access_token=${accessToken}&fields=id,name,category,access_token`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Error al obtener páginas')
+      throw new Error(error.error?.message || 'Error al obtener páginas')
     }
 
     const data = await response.json()
-    return data.pages || []
+    return data.data || []
   } catch (error) {
     console.error('Error al obtener páginas de Facebook:', error)
     throw error
@@ -47,27 +69,72 @@ export const obtenerPaginasFacebook = async (accessToken) => {
 
 
 /**
- * Obtener cuenta de Instagram vinculada a una página de Facebook (usando backend)
+ * Intercambiar código de autorización por token de acceso
+ * NOTA: Esto normalmente requiere App Secret, pero intentaremos con el código directamente
+ * @param {string} code - Código de autorización de Facebook
+ */
+export const intercambiarCodigoPorToken = async (code) => {
+  const META_APP_ID = import.meta.env.VITE_META_APP_ID
+  const REDIRECT_URI = `${window.location.origin}${window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback`
+  
+  if (!META_APP_ID) {
+    throw new Error('VITE_META_APP_ID no está configurado')
+  }
+
+  try {
+    // Intentar obtener token de corta duración
+    // NOTA: Esto normalmente requiere App Secret, pero Facebook permite obtener un token básico
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/oauth/access_token?` +
+      `client_id=${META_APP_ID}&` +
+      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+      `code=${code}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error?.message || 'Error al intercambiar código por token')
+    }
+
+    const data = await response.json()
+    return data.access_token
+  } catch (error) {
+    console.error('Error al intercambiar código por token:', error)
+    throw error
+  }
+}
+
+/**
+ * Obtener cuenta de Instagram vinculada a una página de Facebook (directo desde Graph API)
  * @param {string} pageId - ID de la página de Facebook
  * @param {string} pageAccessToken - Token de acceso de la página
  */
 export const obtenerCuentaInstagram = async (pageId, pageAccessToken) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/marketing/instagram-account`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ pageId, pageAccessToken })
-    })
+    // Obtener cuenta de Instagram vinculada directamente desde Graph API
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${pageId}?fields=instagram_business_account{id,username}&access_token=${pageAccessToken}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Error al obtener cuenta de Instagram')
+      throw new Error(error.error?.message || 'Error al obtener cuenta de Instagram')
     }
 
     const data = await response.json()
-    return data.instagramAccount
+    return data.instagram_business_account || null
   } catch (error) {
     console.error('Error al obtener cuenta de Instagram:', error)
     throw error
@@ -75,7 +142,7 @@ export const obtenerCuentaInstagram = async (pageId, pageAccessToken) => {
 }
 
 /**
- * Obtener métricas de Instagram (insights) usando backend
+ * Obtener métricas de Instagram (insights) directamente desde Graph API
  * @param {string} instagramAccountId - ID de la cuenta de Instagram Business
  * @param {string} accessToken - Token de acceso
  * @param {string} metric - Métrica a obtener (impressions, reach, profile_views, etc.)
@@ -83,21 +150,23 @@ export const obtenerCuentaInstagram = async (pageId, pageAccessToken) => {
  */
 export const obtenerMetricasInstagram = async (instagramAccountId, accessToken, metric = 'impressions', period = 'day') => {
   try {
-    const response = await fetch(`${API_BASE_URL}/marketing/instagram-metrics`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ instagramAccountId, accessToken, metric, period })
-    })
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${instagramAccountId}/insights?metric=${metric}&period=${period}&access_token=${accessToken}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || `Error al obtener métrica ${metric}`)
+      throw new Error(error.error?.message || `Error al obtener métrica ${metric}`)
     }
 
     const data = await response.json()
-    return data.metrics || []
+    return data.data || []
   } catch (error) {
     console.error(`Error al obtener métricas de Instagram (${metric}):`, error)
     throw error
@@ -105,27 +174,29 @@ export const obtenerMetricasInstagram = async (instagramAccountId, accessToken, 
 }
 
 /**
- * Obtener información básica de la cuenta de Instagram usando backend
+ * Obtener información básica de la cuenta de Instagram directamente desde Graph API
  * @param {string} instagramAccountId - ID de la cuenta de Instagram Business
  * @param {string} accessToken - Token de acceso
  */
 export const obtenerInfoInstagram = async (instagramAccountId, accessToken) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/marketing/instagram-info`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ instagramAccountId, accessToken })
-    })
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${instagramAccountId}?fields=id,username,account_type,profile_picture_url&access_token=${accessToken}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Error al obtener información de Instagram')
+      throw new Error(error.error?.message || 'Error al obtener información de Instagram')
     }
 
     const data = await response.json()
-    return data.info
+    return data
   } catch (error) {
     console.error('Error al obtener información de Instagram:', error)
     throw error
@@ -133,7 +204,7 @@ export const obtenerInfoInstagram = async (instagramAccountId, accessToken) => {
 }
 
 /**
- * Obtener métricas de Facebook Page usando backend
+ * Obtener métricas de Facebook Page directamente desde Graph API
  * @param {string} pageId - ID de la página de Facebook
  * @param {string} accessToken - Token de acceso
  * @param {string} metric - Métrica a obtener
@@ -141,21 +212,23 @@ export const obtenerInfoInstagram = async (instagramAccountId, accessToken) => {
  */
 export const obtenerMetricasFacebook = async (pageId, accessToken, metric = 'page_impressions', period = 'day') => {
   try {
-    const response = await fetch(`${API_BASE_URL}/marketing/facebook-metrics`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ pageId, accessToken, metric, period })
-    })
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${pageId}/insights?metric=${metric}&period=${period}&access_token=${accessToken}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || `Error al obtener métrica ${metric}`)
+      throw new Error(error.error?.message || `Error al obtener métrica ${metric}`)
     }
 
     const data = await response.json()
-    return data.metrics || []
+    return data.data || []
   } catch (error) {
     console.error(`Error al obtener métricas de Facebook (${metric}):`, error)
     throw error
@@ -163,27 +236,29 @@ export const obtenerMetricasFacebook = async (pageId, accessToken, metric = 'pag
 }
 
 /**
- * Obtener información de la página de Facebook usando backend
+ * Obtener información de la página de Facebook directamente desde Graph API
  * @param {string} pageId - ID de la página
  * @param {string} accessToken - Token de acceso
  */
 export const obtenerInfoFacebook = async (pageId, accessToken) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/marketing/facebook-info`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ pageId, accessToken })
-    })
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${pageId}?fields=id,name,category,fan_count,followers_count,phone,website&access_token=${accessToken}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
 
     if (!response.ok) {
       const error = await response.json()
-      throw new Error(error.message || 'Error al obtener información de Facebook')
+      throw new Error(error.error?.message || 'Error al obtener información de Facebook')
     }
 
     const data = await response.json()
-    return data.info
+    return data
   } catch (error) {
     console.error('Error al obtener información de Facebook:', error)
     throw error

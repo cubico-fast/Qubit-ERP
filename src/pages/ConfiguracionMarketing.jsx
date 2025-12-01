@@ -17,7 +17,8 @@ import {
   obtenerPaginasFacebook,
   obtenerCuentaInstagram,
   guardarConfiguracionMeta,
-  obtenerConfiguracionMeta
+  obtenerConfiguracionMeta,
+  intercambiarCodigoPorToken
 } from '../utils/metaApi'
 
 const ConfiguracionMarketing = () => {
@@ -54,24 +55,53 @@ const ConfiguracionMarketing = () => {
     cargarConfiguracion()
   }, [])
 
-  // Verificar si hay token en la URL (callback del backend)
+  // Verificar si hay código o token en la URL (callback de OAuth)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('code')
     const token = urlParams.get('token')
-    const platform = urlParams.get('platform')
+    const platform = urlParams.get('platform') || urlParams.get('state') || localStorage.getItem('meta_auth_state') || 'facebook'
     const errorParam = urlParams.get('error')
+    const errorDescription = urlParams.get('error_description')
 
     if (errorParam) {
-      setError(`Error de autorización: ${errorParam}`)
+      setError(`Error de autorización: ${errorDescription || errorParam}`)
       // Limpiar URL
       window.history.replaceState({}, document.title, window.location.pathname)
+      localStorage.removeItem('meta_auth_state')
       return
     }
 
-    if (token && platform) {
+    // Si hay código, intercambiarlo por token
+    if (code) {
+      procesarCodigo(code, platform)
+    } else if (token && platform) {
+      // Si ya hay token (del backend), procesarlo directamente
       procesarToken(token, platform)
     }
   }, [])
+
+  const procesarCodigo = async (code, platform) => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      // Intercambiar código por token
+      const accessToken = await intercambiarCodigoPorToken(code)
+      
+      // Procesar el token
+      await procesarToken(accessToken, platform)
+    } catch (error) {
+      console.error('Error al procesar código:', error)
+      setError(`Error al procesar autorización: ${error.message}. Nota: El intercambio de código por token normalmente requiere un App Secret en el backend por seguridad.`)
+      // Limpiar URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+      localStorage.removeItem('meta_auth_state')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const procesarToken = async (token, platform) => {
     setLoading(true)
@@ -79,11 +109,8 @@ const ConfiguracionMarketing = () => {
     setSuccess(null)
 
     try {
-      // El backend ya procesó el código y nos devolvió el token de larga duración
-      const longLivedToken = token
-
       // Obtener páginas de Facebook
-      const paginas = await obtenerPaginasFacebook(longLivedToken)
+      const paginas = await obtenerPaginasFacebook(token)
 
       if (paginas.length === 0) {
         throw new Error('No se encontraron páginas de Facebook vinculadas a tu cuenta')
@@ -93,7 +120,7 @@ const ConfiguracionMarketing = () => {
 
       // Guardar configuración temporal
       const configTemp = {
-        userAccessToken: longLivedToken,
+        userAccessToken: token,
         platform: platform,
         paginas: paginas,
         connectedAt: new Date().toISOString()
@@ -108,8 +135,9 @@ const ConfiguracionMarketing = () => {
 
       setSuccess('✅ Autenticación exitosa. Selecciona una página para continuar.')
       
-      // Limpiar URL
+      // Limpiar URL y localStorage
       window.history.replaceState({}, document.title, window.location.pathname)
+      localStorage.removeItem('meta_auth_state')
     } catch (error) {
       console.error('Error al procesar token:', error)
       setError(`Error al procesar autorización: ${error.message}`)
@@ -239,7 +267,7 @@ const ConfiguracionMarketing = () => {
             <ol className="list-decimal list-inside space-y-1 text-sm">
               <li>Crea una app en <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="underline">Facebook for Developers</a></li>
               <li>Agrega los productos "Instagram Graph API" y "Facebook Login"</li>
-              <li>Configura la URL de redirección: <code className="bg-blue-100 px-1 rounded">{window.location.origin}/marketing/callback</code></li>
+              <li>Configura la URL de redirección: <code className="bg-blue-100 px-1 rounded">{window.location.origin}{window.location.pathname.includes('/CUBIC-CRM') ? '/CUBIC-CRM' : ''}/marketing/callback</code></li>
               <li>Agrega las variables de entorno <code className="bg-blue-100 px-1 rounded">VITE_META_APP_ID</code> y <code className="bg-blue-100 px-1 rounded">VITE_META_APP_SECRET</code></li>
               <li>Asegúrate de que tu cuenta de Instagram sea Business o Creator y esté vinculada a una página de Facebook</li>
             </ol>
