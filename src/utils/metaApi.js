@@ -203,6 +203,9 @@ export const iniciarAutenticacionMeta = async (platform = 'facebook') => {
  */
 export const obtenerPaginasFacebook = async (accessToken) => {
   try {
+    console.log('🔍 ===== INICIO DEBUG OBTENER PÁGINAS =====')
+    console.log('🔑 Token recibido (primeros 30 caracteres):', accessToken?.substring(0, 30) + '...')
+    
     // Primero, verificar los permisos del token para debug
     try {
       const debugResponse = await fetch(
@@ -210,10 +213,23 @@ export const obtenerPaginasFacebook = async (accessToken) => {
       )
       if (debugResponse.ok) {
         const debugData = await debugResponse.json()
-        console.log('🔍 Permisos del token:', debugData.data?.map(p => `${p.permission} (${p.status})`).join(', ') || 'No se pudieron obtener permisos')
+        const permisos = debugData.data?.map(p => `${p.permission} (${p.status})`) || []
+        console.log('🔍 Permisos del token:', permisos.join(', ') || 'No se pudieron obtener permisos')
+        
+        // Verificar específicamente si tiene pages_show_list
+        const tienePagesShowList = permisos.some(p => p.includes('pages_show_list') && p.includes('granted'))
+        console.log('🔍 ¿Tiene pages_show_list?:', tienePagesShowList ? '✅ SÍ' : '❌ NO')
+        
+        if (!tienePagesShowList) {
+          console.error('❌ PROBLEMA: El token NO tiene el permiso pages_show_list concedido')
+          console.error('💡 Solución: Necesitas autorizar el permiso pages_show_list cuando te conectes')
+        }
+      } else {
+        const errorData = await debugResponse.json()
+        console.error('❌ Error al verificar permisos:', errorData)
       }
     } catch (e) {
-      console.warn('No se pudieron verificar permisos:', e)
+      console.warn('⚠️ No se pudieron verificar permisos:', e)
     }
 
     // Obtener información del usuario para debug
@@ -224,9 +240,12 @@ export const obtenerPaginasFacebook = async (accessToken) => {
       if (userResponse.ok) {
         const userData = await userResponse.json()
         console.log('👤 Usuario autenticado:', userData.name, `(ID: ${userData.id})`)
+      } else {
+        const errorData = await userResponse.json()
+        console.error('❌ Error al obtener info del usuario:', errorData)
       }
     } catch (e) {
-      console.warn('No se pudo obtener información del usuario:', e)
+      console.warn('⚠️ No se pudo obtener información del usuario:', e)
     }
 
     let allPages = []
@@ -287,12 +306,22 @@ export const obtenerPaginasFacebook = async (accessToken) => {
     }
 
     console.log(`✅ Total: Se encontraron ${allPages.length} página(s) de Facebook:`, allPages.map(p => `${p.name} (${p.id})`))
+    console.log('🔍 ===== FIN DEBUG OBTENER PÁGINAS =====')
     
     if (allPages.length === 0) {
-      console.warn('⚠️ No se encontraron páginas. Verifica que:')
-      console.warn('1. Tengas al menos una página de Facebook')
-      console.warn('2. Seas administrador o editor de la página')
-      console.warn('3. El token tenga el permiso pages_show_list')
+      console.error('❌ ===== PROBLEMA DETECTADO =====')
+      console.error('❌ No se encontraron páginas de Facebook')
+      console.error('')
+      console.error('🔍 Diagnóstico:')
+      console.error('1. Verifica en https://www.facebook.com/pages que tengas páginas donde seas administrador')
+      console.error('2. Verifica que el token tenga el permiso "pages_show_list" (debería aparecer arriba)')
+      console.error('3. Si el token es de larga duración, puede que necesites reconectar para obtener los permisos correctos')
+      console.error('4. Prueba acceder directamente a: https://graph.facebook.com/v18.0/me/accounts?access_token=TU_TOKEN')
+      console.error('')
+      console.error('💡 Solución recomendada:')
+      console.error('- Desconecta completamente (haz clic en "Desconectar")')
+      console.error('- Cierra todas las sesiones de Facebook en tu navegador')
+      console.error('- Vuelve a conectar y asegúrate de autorizar TODOS los permisos, especialmente "pages_show_list"')
     }
     
     return allPages
