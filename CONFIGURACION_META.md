@@ -10,13 +10,23 @@
    - **Instagram Graph API**
    - **Facebook Login**
 
-### 2. Configurar OAuth Redirect URI
+### 2. Configurar Dominios y OAuth Redirect URI
 
 1. En tu app de Facebook, ve a **Settings → Basic**
-2. Agrega la URL de redirección en **Valid OAuth Redirect URIs**:
-   ```
-   https://cubico-fast.github.io/CUBIC-CRM/marketing/callback
-   ```
+2. **Agregar Dominio de la App:**
+   - En la sección **"App Domains"** (Dominios de la app), agrega:
+     ```
+     cubico-fast.github.io
+     ```
+   - ⚠️ **IMPORTANTE**: Agrega solo el dominio base (`cubico-fast.github.io`), sin `https://` ni rutas
+3. **Agregar URL de Redirección:**
+   - Desplázate hacia abajo hasta **"Valid OAuth Redirect URIs"** (URI de redirección OAuth válidos)
+   - Haz clic en **"Add URI"** o el botón **"+"**
+   - Agrega la URL completa:
+     ```
+     https://cubico-fast.github.io/CUBIC-CRM/marketing/callback
+     ```
+   - Haz clic en **"Save Changes"** (Guardar cambios)
 
 ### 3. Obtener tu App ID
 
@@ -75,9 +85,19 @@
   4. NO incluyas comillas, NO incluyas objetos JSON como `{"id": "2954507758068155"}`
   5. Redespliega después de corregir
 
+### Error: "No se puede cargar la URL" / "El dominio de esta URL no está incluido en los dominios de la app"
+- **Causa**: El dominio no está agregado en "App Domains" de Facebook
+- **Solución**:
+  1. Ve a tu app en Facebook for Developers
+  2. Settings → Basic
+  3. En "App Domains" (Dominios de la app), agrega: `cubico-fast.github.io`
+  4. Guarda los cambios
+  5. Espera unos minutos para que los cambios se propaguen
+
 ### Error: "Invalid redirect URI"
 - Verifica que la URL de redirección en Facebook sea exactamente: `https://cubico-fast.github.io/CUBIC-CRM/marketing/callback`
 - No debe tener una barra final `/` al final
+- Verifica que también hayas agregado el dominio en "App Domains"
 
 ### Error al intercambiar código por token
 - Esto es normal si no tienes un backend configurado
