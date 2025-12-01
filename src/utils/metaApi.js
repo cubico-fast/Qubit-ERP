@@ -172,54 +172,23 @@ export const iniciarAutenticacionMeta = async (platform = 'facebook') => {
       ? 'instagram_basic,instagram_manage_insights,pages_show_list,pages_read_engagement,pages_manage_metadata'
       : 'pages_show_list,pages_read_engagement,pages_manage_metadata'
 
-    // Verificar primero si ya hay una sesión activa
+    // Usar FB.login() directamente - más simple y confiable
     return new Promise((resolve, reject) => {
-      FB.getLoginStatus((statusResponse) => {
-        console.log('🔍 Estado de login actual:', statusResponse)
-        
-        // Si ya está logueado, verificar permisos
-        if (statusResponse.status === 'connected') {
-          const currentToken = statusResponse.authResponse.accessToken
-          console.log('✅ Ya hay una sesión activa, verificando permisos...')
-          
-          // Verificar permisos del token actual
-          FB.api('/me/permissions', { access_token: currentToken }, (permsResponse) => {
-            console.log('🔍 Permisos actuales:', permsResponse)
-            
-            const permisosNecesarios = scopes.split(',')
-            const permisosActuales = permsResponse.data?.map(p => p.permission) || []
-            const permisosFaltantes = permisosNecesarios.filter(p => !permisosActuales.includes(p.trim()))
-            
-            if (permisosFaltantes.length > 0) {
-              console.log('⚠️ Faltan permisos, solicitando nuevamente:', permisosFaltantes)
-              // Solicitar permisos faltantes
-              FB.login((loginResponse) => {
-                if (loginResponse.authResponse) {
-                  resolve(loginResponse.authResponse.accessToken)
-                } else {
-                  reject(new Error(loginResponse.error?.message || 'Error al solicitar permisos'))
-                }
-              }, { scope: scopes, auth_type: 'rerequest' })
-            } else {
-              console.log('✅ Todos los permisos están concedidos')
-              resolve(currentToken)
-            }
-          })
+      console.log('🔐 Solicitando login de Facebook con permisos:', scopes)
+      FB.login((response) => {
+        console.log('📥 Respuesta de FB.login:', response)
+        if (response.authResponse) {
+          // Usuario autorizado, obtener el access token
+          const accessToken = response.authResponse.accessToken
+          console.log('✅ Login exitoso, token obtenido (longitud:', accessToken.length + ')')
+          resolve(accessToken)
         } else {
-          // No hay sesión, solicitar login con permisos
-          console.log('🔐 No hay sesión activa, solicitando login...')
-          FB.login((loginResponse) => {
-            if (loginResponse.authResponse) {
-              console.log('✅ Login exitoso, token obtenido')
-              resolve(loginResponse.authResponse.accessToken)
-            } else {
-              const errorMessage = loginResponse.error?.message || 'El usuario canceló la autorización o hubo un error'
-              console.error('❌ Error en login:', errorMessage)
-              reject(new Error(errorMessage))
-            }
-          }, { scope: scopes })
+          // Usuario canceló o hubo un error
+          const errorMessage = response.error?.message || 'El usuario canceló la autorización o hubo un error'
+          console.error('❌ Error en login:', errorMessage, response.error)
+          reject(new Error(errorMessage))
         }
-      })
+      }, { scope: scopes })
     })
   } catch (error) {
     console.error('Error al inicializar Facebook SDK:', error)
