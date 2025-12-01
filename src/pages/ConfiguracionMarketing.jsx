@@ -157,58 +157,8 @@ const ConfiguracionMarketing = () => {
 
       console.log('📝 Token recibido, longitud:', token.length, 'Primeros caracteres:', token.substring(0, 20) + '...')
 
-      // Obtener páginas de Facebook
-      let paginas = []
-      try {
-        console.log('🔍 Llamando a obtenerPaginasFacebook...')
-        
-        // PRUEBA DIRECTA: Intentar obtener páginas directamente para ver qué pasa
-        console.log('🧪 PRUEBA DIRECTA: Llamando a /me/accounts directamente...')
-        const testUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${token}&fields=id,name,category,access_token&limit=100`
-        console.log('🧪 URL de prueba:', testUrl.replace(token, 'TOKEN_OCULTO'))
-        
-        const testResponse = await fetch(testUrl)
-        const testData = await testResponse.json()
-        console.log('🧪 RESPUESTA DIRECTA DE FACEBOOK:', JSON.stringify(testData, null, 2))
-        
-        if (testData.error) {
-          console.error('❌ ERROR DE FACEBOOK:', testData.error)
-          throw new Error(`Error de Facebook: ${testData.error.message} (Código: ${testData.error.code})`)
-        }
-        
-        if (testData.data && testData.data.length > 0) {
-          console.log('✅ PRUEBA DIRECTA EXITOSA: Se encontraron', testData.data.length, 'páginas')
-          paginas = testData.data
-        } else {
-          console.warn('⚠️ PRUEBA DIRECTA: Facebook devolvió un array vacío')
-          console.warn('⚠️ Esto significa que:')
-          console.warn('   1. El token es válido pero no tiene acceso a páginas')
-          console.warn('   2. O no tienes páginas asociadas a tu cuenta')
-          console.warn('   3. O el token no tiene el permiso pages_show_list')
-        }
-        
-        // Si la prueba directa no funcionó, intentar con la función normal
-        if (paginas.length === 0) {
-          console.log('🔄 Intentando con función obtenerPaginasFacebook...')
-          paginas = await obtenerPaginasFacebook(token)
-          console.log('✅ obtenerPaginasFacebook completado, páginas encontradas:', paginas.length)
-        }
-      } catch (error) {
-        console.error('❌ Error al obtener páginas:', error)
-        console.error('❌ Detalles del error:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        })
-        // Si el error es específico sobre permisos o páginas, proporcionar mensaje más útil
-        if (error.message.includes('permission') || error.message.includes('permiso')) {
-          throw new Error('No tienes permisos para ver las páginas. Asegúrate de autorizar el permiso "pages_show_list" cuando te conectes.')
-        }
-        if (error.message.includes('OAuth')) {
-          throw new Error('Error de autenticación. Por favor, desconecta y vuelve a conectar, asegurándote de autorizar todos los permisos.')
-        }
-        throw new Error(`Error al obtener páginas de Facebook: ${error.message}`)
-      }
+      // Obtener páginas de Facebook - versión simplificada
+      const paginas = await obtenerPaginasFacebook(token)
 
       if (paginas.length === 0) {
         // Verificar permisos específicamente antes de dar el error
