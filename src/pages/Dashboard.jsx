@@ -155,23 +155,43 @@ const Dashboard = () => {
         const fechaInicioStr = primerDiaMes.toISOString().split('T')[0]
         const fechaFinStr = networkDate.toISOString().split('T')[0]
         
-        // Solo actualizar si las fechas son diferentes (para evitar loops infinitos)
-        if (fechaInicio !== fechaInicioStr || fechaFin !== fechaFinStr) {
-          setFechaInicio(fechaInicioStr)
-          setFechaFin(fechaFinStr)
-          
-          // Actualizar también los meses del calendario
-          setCurrentMonthLeft(startOfMonth(networkDate))
-          setCurrentMonthRight(startOfMonth(addMonths(networkDate, 1)))
-        }
+        // Siempre actualizar las fechas con la fecha de la red (más confiable)
+        setFechaInicio(fechaInicioStr)
+        setFechaFin(fechaFinStr)
+        
+        // Actualizar también los meses del calendario
+        setCurrentMonthLeft(startOfMonth(networkDate))
+        setCurrentMonthRight(startOfMonth(addMonths(networkDate, 1)))
+        
+        // Log para debugging
+        console.log('📅 Fechas actualizadas:', {
+          fechaInicio: fechaInicioStr,
+          fechaFin: fechaFinStr,
+          fechaRed: networkDate.toISOString().split('T')[0],
+          mes: networkDate.getMonth() + 1,
+          año: networkDate.getFullYear()
+        })
       } catch (error) {
         console.error('Error al obtener fecha de la red:', error)
+        // Fallback: usar fecha local si falla la red
+        const hoy = new Date()
+        const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+        setFechaInicio(primerDiaMes.toISOString().split('T')[0])
+        setFechaFin(hoy.toISOString().split('T')[0])
       }
     }
     updateDate()
     const interval = setInterval(updateDate, 60000) // Actualizar cada minuto
     return () => clearInterval(interval)
-  }, [])
+  }, []) // Sin dependencias para ejecutar solo al montar
+
+  // Log inicial para ver qué fechas se están usando
+  console.log('🔍 Iniciando filtro de ventas:', {
+    fechaInicio,
+    fechaFin,
+    totalVentas: ventas.length,
+    ventas: ventas.map(v => ({ id: v.id, fecha: v.fecha, total: v.total }))
+  })
 
   // Filtrar ventas por rango de fechas seleccionado usando el campo 'fecha' de Firestore
   const ventasFiltradas = ventas.filter(venta => {
@@ -210,22 +230,15 @@ const Dashboard = () => {
     // Comparar fechas en formato YYYY-MM-DD (comparación lexicográfica funciona para este formato)
     const estaEnRango = fechaVenta >= fechaInicio && fechaVenta <= fechaFin
     
-    // Log para debugging - mostrar información útil
-    if (process.env.NODE_ENV === 'development') {
-      if (ventas.length > 0 && ventas.indexOf(venta) === 0) {
-        console.log('🔍 Filtro de fechas:', {
-          fechaVenta,
-          fechaInicio,
-          fechaFin,
-          estaEnRango,
-          totalVentas: ventas.length,
-          ventasFiltradas: ventas.filter(v => {
-            const f = typeof v.fecha === 'string' ? v.fecha.split('T')[0] : v.fecha
-            return f >= fechaInicio && f <= fechaFin
-          }).length
-        })
-      }
-    }
+    // Log detallado para debugging - mostrar TODAS las ventas que se están evaluando
+    console.log(`🔍 Evaluando venta ${venta.id}:`, {
+      fechaVenta,
+      fechaInicio,
+      fechaFin,
+      comparacion: `${fechaVenta} >= ${fechaInicio} = ${fechaVenta >= fechaInicio}, ${fechaVenta} <= ${fechaFin} = ${fechaVenta <= fechaFin}`,
+      estaEnRango,
+      total: venta.total
+    })
     
     return estaEnRango
   })
@@ -300,19 +313,23 @@ const Dashboard = () => {
   const totalCompras = 0 // Por ahora no hay compras
 
   // Log para debugging - mostrar información del rango y totales
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📊 Resumen de ventas filtradas:', {
-      fechaInicio,
-      fechaFin,
-      totalVentasEnRango: ventasFiltradas.length,
-      totalMonto: totalVentas,
-      ventas: ventasFiltradas.map(v => ({
-        id: v.id,
-        fecha: v.fecha,
-        total: v.total
-      }))
-    })
-  }
+  console.log('📊 Resumen de ventas filtradas:', {
+    fechaInicio,
+    fechaFin,
+    totalVentasEnRango: ventasFiltradas.length,
+    totalMonto: totalVentas,
+    totalVentasEnBD: ventas.length,
+    ventasFiltradas: ventasFiltradas.map(v => ({
+      id: v.id,
+      fecha: v.fecha,
+      total: v.total
+    })),
+    todasLasVentas: ventas.map(v => ({
+      id: v.id,
+      fecha: v.fecha,
+      total: v.total
+    }))
+  })
 
   const ventasComprasData = [
     { tipo: 'Ventas', monto: convertValue(totalVentas), color: '#f59e0b' },
