@@ -104,16 +104,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   
-  // Estado para el rango de fechas seleccionado (inicializado con fecha actual de la red)
-  const [fechaInicio, setFechaInicio] = useState(() => {
-    const hoy = new Date()
-    const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
-    return primerDiaMes.toISOString().split('T')[0]
-  })
-  const [fechaFin, setFechaFin] = useState(() => {
-    const hoy = new Date()
-    return hoy.toISOString().split('T')[0] // Usar el día actual en lugar del último día del mes
-  })
+  // Estado para el rango de fechas seleccionado (inicializado como null hasta obtener fecha de red)
+  const [fechaInicio, setFechaInicio] = useState(null)
+  const [fechaFin, setFechaFin] = useState(null)
+  const [fechasInicializadas, setFechasInicializadas] = useState(false)
   
   // Estado para el calendario
   const [showCalendar, setShowCalendar] = useState(false)
@@ -158,6 +152,7 @@ const Dashboard = () => {
         // Siempre actualizar las fechas con la fecha de la red (más confiable)
         setFechaInicio(fechaInicioStr)
         setFechaFin(fechaFinStr)
+        setFechasInicializadas(true) // Marcar que las fechas están inicializadas
         
         // Actualizar también los meses del calendario
         setCurrentMonthLeft(startOfMonth(networkDate))
@@ -178,6 +173,7 @@ const Dashboard = () => {
         const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
         setFechaInicio(primerDiaMes.toISOString().split('T')[0])
         setFechaFin(hoy.toISOString().split('T')[0])
+        setFechasInicializadas(true)
       }
     }
     updateDate()
@@ -185,63 +181,70 @@ const Dashboard = () => {
     return () => clearInterval(interval)
   }, []) // Sin dependencias para ejecutar solo al montar
 
-  // Log inicial para ver qué fechas se están usando
-  console.log('🔍 Iniciando filtro de ventas:', {
-    fechaInicio,
-    fechaFin,
-    totalVentas: ventas.length,
-    ventas: ventas.map(v => ({ id: v.id, fecha: v.fecha, total: v.total }))
-  })
-
-  // Filtrar ventas por rango de fechas seleccionado usando el campo 'fecha' de Firestore
-  const ventasFiltradas = ventas.filter(venta => {
-    // Usar el campo 'fecha' que se guarda en Firestore, NO createdAt ni updatedAt
-    if (!venta.fecha) {
-      console.warn('Venta sin campo fecha:', venta.id)
-      return false
-    }
-    
-    // Normalizar la fecha de la venta (puede venir en diferentes formatos)
-    let fechaVenta = venta.fecha
-    
-    // Si es string, asegurarse de que esté en formato YYYY-MM-DD
-    if (typeof fechaVenta === 'string') {
-      // Si tiene hora (formato ISO), tomar solo la parte de la fecha
-      if (fechaVenta.includes('T')) {
-        fechaVenta = fechaVenta.split('T')[0]
-      }
-      // Si ya está en formato YYYY-MM-DD, mantenerlo así
-      // Validar formato básico (debe tener al menos YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}/.test(fechaVenta)) {
-        console.warn('Formato de fecha inválido:', fechaVenta, 'en venta:', venta.id)
-        return false
-      }
-    } else if (fechaVenta?.toDate) {
-      // Si es un Timestamp de Firestore (no debería pasar si se guarda como string)
-      fechaVenta = fechaVenta.toDate().toISOString().split('T')[0]
-    } else if (fechaVenta instanceof Date) {
-      // Si es un objeto Date
-      fechaVenta = fechaVenta.toISOString().split('T')[0]
-    } else {
-      console.warn('Tipo de fecha no reconocido:', typeof fechaVenta, 'en venta:', venta.id)
-      return false
-    }
-    
-    // Comparar fechas en formato YYYY-MM-DD (comparación lexicográfica funciona para este formato)
-    const estaEnRango = fechaVenta >= fechaInicio && fechaVenta <= fechaFin
-    
-    // Log detallado para debugging - mostrar TODAS las ventas que se están evaluando
-    console.log(`🔍 Evaluando venta ${venta.id}:`, {
-      fechaVenta,
+  // No filtrar hasta que las fechas estén inicializadas
+  if (!fechasInicializadas || !fechaInicio || !fechaFin) {
+    console.log('⏳ Esperando inicialización de fechas...')
+    // Retornar array vacío hasta que las fechas estén listas
+    var ventasFiltradas = []
+  } else {
+    // Log inicial para ver qué fechas se están usando
+    console.log('🔍 Iniciando filtro de ventas:', {
       fechaInicio,
       fechaFin,
-      comparacion: `${fechaVenta} >= ${fechaInicio} = ${fechaVenta >= fechaInicio}, ${fechaVenta} <= ${fechaFin} = ${fechaVenta <= fechaFin}`,
-      estaEnRango,
-      total: venta.total
+      totalVentas: ventas.length,
+      ventas: ventas.map(v => ({ id: v.id, fecha: v.fecha, total: v.total }))
     })
-    
-    return estaEnRango
-  })
+
+    // Filtrar ventas por rango de fechas seleccionado usando el campo 'fecha' de Firestore
+    var ventasFiltradas = ventas.filter(venta => {
+      // Usar el campo 'fecha' que se guarda en Firestore, NO createdAt ni updatedAt
+      if (!venta.fecha) {
+        console.warn('Venta sin campo fecha:', venta.id)
+        return false
+      }
+      
+      // Normalizar la fecha de la venta (puede venir en diferentes formatos)
+      let fechaVenta = venta.fecha
+      
+      // Si es string, asegurarse de que esté en formato YYYY-MM-DD
+      if (typeof fechaVenta === 'string') {
+        // Si tiene hora (formato ISO), tomar solo la parte de la fecha
+        if (fechaVenta.includes('T')) {
+          fechaVenta = fechaVenta.split('T')[0]
+        }
+        // Si ya está en formato YYYY-MM-DD, mantenerlo así
+        // Validar formato básico (debe tener al menos YYYY-MM-DD)
+        if (!/^\d{4}-\d{2}-\d{2}/.test(fechaVenta)) {
+          console.warn('Formato de fecha inválido:', fechaVenta, 'en venta:', venta.id)
+          return false
+        }
+      } else if (fechaVenta?.toDate) {
+        // Si es un Timestamp de Firestore (no debería pasar si se guarda como string)
+        fechaVenta = fechaVenta.toDate().toISOString().split('T')[0]
+      } else if (fechaVenta instanceof Date) {
+        // Si es un objeto Date
+        fechaVenta = fechaVenta.toISOString().split('T')[0]
+      } else {
+        console.warn('Tipo de fecha no reconocido:', typeof fechaVenta, 'en venta:', venta.id)
+        return false
+      }
+      
+      // Comparar fechas en formato YYYY-MM-DD (comparación lexicográfica funciona para este formato)
+      const estaEnRango = fechaVenta >= fechaInicio && fechaVenta <= fechaFin
+      
+      // Log detallado para debugging - mostrar TODAS las ventas que se están evaluando
+      console.log(`🔍 Evaluando venta ${venta.id}:`, {
+        fechaVenta,
+        fechaInicio,
+        fechaFin,
+        comparacion: `${fechaVenta} >= ${fechaInicio} = ${fechaVenta >= fechaInicio}, ${fechaVenta} <= ${fechaFin} = ${fechaVenta <= fechaFin}`,
+        estaEnRango,
+        total: venta.total
+      })
+      
+      return estaEnRango
+    })
+  }
 
   // Calcular estadísticas de comprobantes (solo para el rango seleccionado)
   const comprobantesStats = {
