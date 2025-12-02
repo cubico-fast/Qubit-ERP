@@ -292,24 +292,150 @@ const Marketing = () => {
     }
   }
 
-  // Datos de rendimiento por plataforma
-  const rendimientoData = [
-    { fecha: 'Lun', instagram: 1200, facebook: 800, tiktok: 2500, youtube: 600 },
-    { fecha: 'Mar', instagram: 1500, facebook: 950, tiktok: 3200, youtube: 750 },
-    { fecha: 'Mié', instagram: 1800, facebook: 1100, tiktok: 4100, youtube: 900 },
-    { fecha: 'Jue', instagram: 2100, facebook: 1300, tiktok: 4800, youtube: 1100 },
-    { fecha: 'Vie', instagram: 2400, facebook: 1500, tiktok: 5500, youtube: 1300 },
-    { fecha: 'Sáb', instagram: 2800, facebook: 1800, tiktok: 6200, youtube: 1500 },
-    { fecha: 'Dom', instagram: 3200, facebook: 2100, tiktok: 7000, youtube: 1800 }
-  ]
+  // Función para generar datos de rendimiento reales desde métricas
+  const generarRendimientoDataReal = () => {
+    const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    const datos = dias.map((dia, index) => ({
+      fecha: dia,
+      instagram: 0,
+      facebook: 0,
+      tiktok: 0,
+      youtube: 0
+    }))
 
-  // Datos de engagement
-  const engagementData = [
-    { plataforma: 'Instagram', likes: 12500, comentarios: 850, compartidos: 320, guardados: 450 },
-    { plataforma: 'Facebook', likes: 8900, comentarios: 620, compartidos: 280, guardados: 0 },
-    { plataforma: 'TikTok', likes: 18500, comentarios: 1200, compartidos: 890, guardados: 0 },
-    { plataforma: 'YouTube', likes: 5600, comentarios: 420, compartidos: 180, guardados: 0 }
-  ]
+    // Datos de Instagram (reach)
+    if (metricasReales.instagram?.reach?.[0]?.values) {
+      const valoresReach = metricasReales.instagram.reach[0].values
+      valoresReach.forEach((valor, index) => {
+        if (index < datos.length) {
+          datos[index].instagram = parseInt(valor.value) || 0
+        }
+      })
+    }
+
+    // Datos de Facebook (impressions de todas las páginas)
+    if (metricasReales.facebook && metricasReales.facebook.length > 0) {
+      metricasReales.facebook.forEach(pagina => {
+        if (pagina.impressions?.[0]?.values) {
+          const valoresImpressions = pagina.impressions[0].values
+          valoresImpressions.forEach((valor, index) => {
+            if (index < datos.length) {
+              datos[index].facebook += parseInt(valor.value) || 0
+            }
+          })
+        }
+      })
+    }
+
+    // Si no hay datos reales, usar datos mock solo para plataformas sin conexión
+    if (!metricasReales.instagram && metricasReales.facebook.length === 0) {
+      return [
+        { fecha: 'Lun', instagram: 1200, facebook: 800, tiktok: 2500, youtube: 600 },
+        { fecha: 'Mar', instagram: 1500, facebook: 950, tiktok: 3200, youtube: 750 },
+        { fecha: 'Mié', instagram: 1800, facebook: 1100, tiktok: 4100, youtube: 900 },
+        { fecha: 'Jue', instagram: 2100, facebook: 1300, tiktok: 4800, youtube: 1100 },
+        { fecha: 'Vie', instagram: 2400, facebook: 1500, tiktok: 5500, youtube: 1300 },
+        { fecha: 'Sáb', instagram: 2800, facebook: 1800, tiktok: 6200, youtube: 1500 },
+        { fecha: 'Dom', instagram: 3200, facebook: 2100, tiktok: 7000, youtube: 1800 }
+      ]
+    }
+
+    // Si hay datos reales pero faltan algunos días, mantener datos mock para plataformas sin conexión
+    if (!metricasReales.instagram) {
+      datos.forEach((dato, index) => {
+        const mockData = [
+          { instagram: 1200, facebook: 800, tiktok: 2500, youtube: 600 },
+          { instagram: 1500, facebook: 950, tiktok: 3200, youtube: 750 },
+          { instagram: 1800, facebook: 1100, tiktok: 4100, youtube: 900 },
+          { instagram: 2100, facebook: 1300, tiktok: 4800, youtube: 1100 },
+          { instagram: 2400, facebook: 1500, tiktok: 5500, youtube: 1300 },
+          { instagram: 2800, facebook: 1800, tiktok: 6200, youtube: 1500 },
+          { instagram: 3200, facebook: 2100, tiktok: 7000, youtube: 1800 }
+        ]
+        if (dato.instagram === 0) dato.instagram = mockData[index].instagram
+        if (dato.facebook === 0 && metricasReales.facebook.length === 0) dato.facebook = mockData[index].facebook
+        dato.tiktok = mockData[index].tiktok
+        dato.youtube = mockData[index].youtube
+      })
+    } else {
+      // Si hay Instagram pero no Facebook, mantener mock solo para Facebook
+      if (metricasReales.facebook.length === 0) {
+        datos.forEach((dato, index) => {
+          const mockFacebook = [800, 950, 1100, 1300, 1500, 1800, 2100]
+          if (dato.facebook === 0) dato.facebook = mockFacebook[index]
+          dato.tiktok = [2500, 3200, 4100, 4800, 5500, 6200, 7000][index]
+          dato.youtube = [600, 750, 900, 1100, 1300, 1500, 1800][index]
+        })
+      } else {
+        // Si hay Facebook pero no Instagram, mantener mock solo para Instagram
+        datos.forEach((dato, index) => {
+          const mockInstagram = [1200, 1500, 1800, 2100, 2400, 2800, 3200]
+          if (dato.instagram === 0) dato.instagram = mockInstagram[index]
+          dato.tiktok = [2500, 3200, 4100, 4800, 5500, 6200, 7000][index]
+          dato.youtube = [600, 750, 900, 1100, 1300, 1500, 1800][index]
+        })
+      }
+    }
+
+    return datos
+  }
+
+  // Datos de rendimiento por plataforma (reales o mock)
+  const rendimientoData = generarRendimientoDataReal()
+
+  // Función para generar datos de engagement reales
+  const generarEngagementDataReal = () => {
+    const datos = []
+
+    // Instagram - usar reach como aproximación (no tenemos likes/comentarios directos)
+    if (metricasReales.instagram) {
+      const totalReach = metricasReales.instagram.reach?.[0]?.values?.reduce(
+        (sum, v) => sum + (parseInt(v.value) || 0), 0
+      ) || 0
+      const followers = metricasReales.instagram.info?.followers_count || 0
+      // Estimación basada en engagement típico (2-5% de reach)
+      const engagementEstimado = Math.floor(totalReach * 0.03)
+      datos.push({
+        plataforma: 'Instagram',
+        likes: Math.floor(engagementEstimado * 0.7),
+        comentarios: Math.floor(engagementEstimado * 0.15),
+        compartidos: Math.floor(engagementEstimado * 0.1),
+        guardados: Math.floor(engagementEstimado * 0.05)
+      })
+    } else {
+      datos.push({ plataforma: 'Instagram', likes: 12500, comentarios: 850, compartidos: 320, guardados: 450 })
+    }
+
+    // Facebook - usar engaged users como aproximación
+    if (metricasReales.facebook && metricasReales.facebook.length > 0) {
+      let totalEngagedUsers = 0
+      metricasReales.facebook.forEach(pagina => {
+        const engaged = pagina.engagedUsers?.[0]?.values?.reduce(
+          (sum, v) => sum + (parseInt(v.value) || 0), 0
+        ) || 0
+        totalEngagedUsers += engaged
+      })
+      // Estimación basada en engagement típico de Facebook
+      datos.push({
+        plataforma: 'Facebook',
+        likes: Math.floor(totalEngagedUsers * 0.6),
+        comentarios: Math.floor(totalEngagedUsers * 0.25),
+        compartidos: Math.floor(totalEngagedUsers * 0.15),
+        guardados: 0
+      })
+    } else {
+      datos.push({ plataforma: 'Facebook', likes: 8900, comentarios: 620, compartidos: 280, guardados: 0 })
+    }
+
+    // TikTok y YouTube siempre mock (no hay API conectada)
+    datos.push({ plataforma: 'TikTok', likes: 18500, comentarios: 1200, compartidos: 890, guardados: 0 })
+    datos.push({ plataforma: 'YouTube', likes: 5600, comentarios: 420, compartidos: 180, guardados: 0 })
+
+    return datos
+  }
+
+  // Datos de engagement (reales o mock)
+  const engagementData = generarEngagementDataReal()
 
   // Datos de algoritmo por factor
   const algoritmoFactorData = Object.entries(algoritmoData).map(([key, value]) => ({
@@ -789,12 +915,54 @@ const Marketing = () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={[
-                  { name: 'Instagram', value: 35 },
-                  { name: 'Facebook', value: 25 },
-                  { name: 'TikTok', value: 30 },
-                  { name: 'YouTube', value: 10 }
-                ]}
+                data={(() => {
+                  const datosPie = []
+                  
+                  // Instagram - usar reach total
+                  if (metricasReales.instagram?.reach?.[0]?.values) {
+                    const totalReach = metricasReales.instagram.reach[0].values.reduce(
+                      (sum, v) => sum + (parseInt(v.value) || 0), 0
+                    )
+                    if (totalReach > 0) {
+                      datosPie.push({ name: 'Instagram', value: totalReach })
+                    }
+                  }
+                  
+                  // Facebook - sumar impressions de todas las páginas
+                  if (metricasReales.facebook && metricasReales.facebook.length > 0) {
+                    let totalImpressions = 0
+                    metricasReales.facebook.forEach(pagina => {
+                      const impressions = pagina.impressions?.[0]?.values?.reduce(
+                        (sum, v) => sum + (parseInt(v.value) || 0), 0
+                      ) || 0
+                      totalImpressions += impressions
+                    })
+                    if (totalImpressions > 0) {
+                      datosPie.push({ name: 'Facebook', value: totalImpressions })
+                    }
+                  }
+                  
+                  // Si no hay datos reales, usar mock
+                  if (datosPie.length === 0) {
+                    return [
+                      { name: 'Instagram', value: 35 },
+                      { name: 'Facebook', value: 25 },
+                      { name: 'TikTok', value: 30 },
+                      { name: 'YouTube', value: 10 }
+                    ]
+                  }
+                  
+                  // Calcular total para porcentajes
+                  const total = datosPie.reduce((sum, item) => sum + item.value, 0)
+                  
+                  // Agregar TikTok y YouTube como mock si hay datos reales
+                  if (total > 0) {
+                    datosPie.push({ name: 'TikTok', value: Math.floor(total * 0.3) })
+                    datosPie.push({ name: 'YouTube', value: Math.floor(total * 0.1) })
+                  }
+                  
+                  return datosPie
+                })()}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -803,12 +971,44 @@ const Marketing = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {[
-                  { name: 'Instagram', value: 35 },
-                  { name: 'Facebook', value: 25 },
-                  { name: 'TikTok', value: 30 },
-                  { name: 'YouTube', value: 10 }
-                ].map((entry, index) => (
+                {(() => {
+                  const datosPie = []
+                  
+                  if (metricasReales.instagram?.reach?.[0]?.values) {
+                    const totalReach = metricasReales.instagram.reach[0].values.reduce(
+                      (sum, v) => sum + (parseInt(v.value) || 0), 0
+                    )
+                    if (totalReach > 0) datosPie.push({ name: 'Instagram', value: totalReach })
+                  }
+                  
+                  if (metricasReales.facebook && metricasReales.facebook.length > 0) {
+                    let totalImpressions = 0
+                    metricasReales.facebook.forEach(pagina => {
+                      const impressions = pagina.impressions?.[0]?.values?.reduce(
+                        (sum, v) => sum + (parseInt(v.value) || 0), 0
+                      ) || 0
+                      totalImpressions += impressions
+                    })
+                    if (totalImpressions > 0) datosPie.push({ name: 'Facebook', value: totalImpressions })
+                  }
+                  
+                  if (datosPie.length === 0) {
+                    return [
+                      { name: 'Instagram', value: 35 },
+                      { name: 'Facebook', value: 25 },
+                      { name: 'TikTok', value: 30 },
+                      { name: 'YouTube', value: 10 }
+                    ]
+                  }
+                  
+                  const total = datosPie.reduce((sum, item) => sum + item.value, 0)
+                  if (total > 0) {
+                    datosPie.push({ name: 'TikTok', value: Math.floor(total * 0.3) })
+                    datosPie.push({ name: 'YouTube', value: Math.floor(total * 0.1) })
+                  }
+                  
+                  return datosPie
+                })().map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS_PIE[index]} />
                 ))}
               </Pie>
