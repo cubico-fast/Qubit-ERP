@@ -26,7 +26,7 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths, startOfWeek, en
 import { es } from 'date-fns/locale'
 
 // Componente de Calendario Mensual
-const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick }) => {
+const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick, currentDate }) => {
   const monthStart = startOfMonth(month)
   const monthEnd = endOfMonth(month)
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
@@ -50,6 +50,13 @@ const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick }) => {
     return isSameDay(date, fechaFin)
   }
 
+  const isFutureDate = (date) => {
+    if (!currentDate) return false
+    const hoy = new Date(currentDate)
+    hoy.setHours(23, 59, 59, 999)
+    return date > hoy
+  }
+
   return (
     <div className="w-full">
       <div className="grid grid-cols-7 gap-1 mb-2">
@@ -65,18 +72,21 @@ const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick }) => {
           const inRange = isInRange(day)
           const isStart = isStartDate(day)
           const isEnd = isEndDate(day)
+          const isFuture = isFutureDate(day)
 
           return (
             <button
               key={idx}
-              onClick={() => onDateClick(day)}
+              onClick={() => !isFuture && onDateClick(day)}
+              disabled={isFuture}
               className={`
                 h-10 text-sm rounded-lg transition-colors
-                ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-900 hover:bg-gray-100'}
+                ${!isCurrentMonth ? 'text-gray-300' : isFuture ? 'text-gray-300 cursor-not-allowed opacity-50' : 'text-gray-900 hover:bg-gray-100'}
                 ${inRange ? 'bg-blue-100' : ''}
                 ${isStart ? 'bg-blue-600 text-white font-semibold' : ''}
                 ${isEnd ? 'bg-blue-600 text-white font-semibold' : ''}
                 ${isStart && isEnd ? 'rounded-full' : ''}
+                ${isFuture ? 'cursor-not-allowed' : 'cursor-pointer'}
               `}
             >
               {format(day, 'd')}
@@ -111,6 +121,7 @@ const Dashboard = () => {
   const [tempFechaFin, setTempFechaFin] = useState(null)
   const [currentMonthLeft, setCurrentMonthLeft] = useState(new Date())
   const [currentMonthRight, setCurrentMonthRight] = useState(addMonths(new Date(), 1))
+  const [lastSelectedMonth, setLastSelectedMonth] = useState(null)
   const [selectingStart, setSelectingStart] = useState(true)
   const calendarRef = useRef(null)
   
@@ -485,7 +496,16 @@ const Dashboard = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-4">
                     <button
-                      onClick={() => setCurrentMonthLeft(subMonths(currentMonthLeft, 1))}
+                      onClick={() => {
+                        const nuevoMesIzq = subMonths(currentMonthLeft, 1)
+                        const nuevoMesDer = subMonths(currentMonthRight, 1)
+                        setCurrentMonthLeft(nuevoMesIzq)
+                        setCurrentMonthRight(nuevoMesDer)
+                        // Reiniciar fechas temporales cuando cambia el mes
+                        setTempFechaInicio(null)
+                        setTempFechaFin(null)
+                        setLastSelectedMonth(null)
+                      }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                       <ChevronLeft size={20} />
@@ -495,8 +515,14 @@ const Dashboard = () => {
                     </h4>
                     <button
                       onClick={() => {
-                        setCurrentMonthLeft(addMonths(currentMonthLeft, 1))
-                        setCurrentMonthRight(addMonths(currentMonthRight, 1))
+                        const nuevoMesIzq = addMonths(currentMonthLeft, 1)
+                        const nuevoMesDer = addMonths(currentMonthRight, 1)
+                        setCurrentMonthLeft(nuevoMesIzq)
+                        setCurrentMonthRight(nuevoMesDer)
+                        // Reiniciar fechas temporales cuando cambia el mes
+                        setTempFechaInicio(null)
+                        setTempFechaFin(null)
+                        setLastSelectedMonth(null)
                       }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -507,16 +533,30 @@ const Dashboard = () => {
                     month={currentMonthLeft}
                     fechaInicio={tempFechaInicio ? new Date(tempFechaInicio + 'T00:00:00') : null}
                     fechaFin={tempFechaFin ? new Date(tempFechaFin + 'T00:00:00') : null}
+                    currentDate={currentDate}
                     onDateClick={(date) => {
-                      const dateStr = format(date, 'yyyy-MM-dd')
-                      if (selectingStart || !tempFechaInicio || dateStr < tempFechaInicio) {
-                        setTempFechaInicio(dateStr)
-                        setTempFechaFin(null)
-                        setSelectingStart(false)
-                      } else {
-                        setTempFechaFin(dateStr)
-                        setSelectingStart(true)
+                      // Validar que la fecha no sea futura
+                      const hoy = new Date()
+                      hoy.setHours(23, 59, 59, 999) // Fin del día actual
+                      if (date > hoy) {
+                        return // No permitir seleccionar fechas futuras
                       }
+
+                      const dateStr = format(date, 'yyyy-MM-dd')
+                      const inicioMes = startOfMonth(date)
+                      const inicioMesStr = format(inicioMes, 'yyyy-MM-dd')
+                      
+                      // Siempre establecer desde el inicio del mes hasta la fecha seleccionada
+                      setTempFechaInicio(inicioMesStr)
+                      setTempFechaFin(dateStr)
+                      setSelectingStart(true)
+                      
+                      // Detectar cambio de mes para reiniciar valores
+                      const mesSeleccionado = format(date, 'yyyy-MM')
+                      if (lastSelectedMonth && lastSelectedMonth !== mesSeleccionado) {
+                        // El mes cambió, los valores se reiniciarán automáticamente al aplicar
+                      }
+                      setLastSelectedMonth(mesSeleccionado)
                     }}
                   />
                 </div>
@@ -526,8 +566,14 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between mb-4">
                     <button
                       onClick={() => {
-                        setCurrentMonthLeft(subMonths(currentMonthLeft, 1))
-                        setCurrentMonthRight(subMonths(currentMonthRight, 1))
+                        const nuevoMesIzq = subMonths(currentMonthLeft, 1)
+                        const nuevoMesDer = subMonths(currentMonthRight, 1)
+                        setCurrentMonthLeft(nuevoMesIzq)
+                        setCurrentMonthRight(nuevoMesDer)
+                        // Reiniciar fechas temporales cuando cambia el mes
+                        setTempFechaInicio(null)
+                        setTempFechaFin(null)
+                        setLastSelectedMonth(null)
                       }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -537,7 +583,16 @@ const Dashboard = () => {
                       {format(currentMonthRight, 'MMMM yyyy', { locale: es })}
                     </h4>
                     <button
-                      onClick={() => setCurrentMonthRight(addMonths(currentMonthRight, 1))}
+                      onClick={() => {
+                        const nuevoMesDer = addMonths(currentMonthRight, 1)
+                        const nuevoMesIzq = addMonths(currentMonthLeft, 1)
+                        setCurrentMonthRight(nuevoMesDer)
+                        setCurrentMonthLeft(nuevoMesIzq)
+                        // Reiniciar fechas temporales cuando cambia el mes
+                        setTempFechaInicio(null)
+                        setTempFechaFin(null)
+                        setLastSelectedMonth(null)
+                      }}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                       <ChevronRight size={20} />
@@ -547,16 +602,30 @@ const Dashboard = () => {
                     month={currentMonthRight}
                     fechaInicio={tempFechaInicio ? new Date(tempFechaInicio + 'T00:00:00') : null}
                     fechaFin={tempFechaFin ? new Date(tempFechaFin + 'T00:00:00') : null}
+                    currentDate={currentDate}
                     onDateClick={(date) => {
-                      const dateStr = format(date, 'yyyy-MM-dd')
-                      if (selectingStart || !tempFechaInicio || dateStr < tempFechaInicio) {
-                        setTempFechaInicio(dateStr)
-                        setTempFechaFin(null)
-                        setSelectingStart(false)
-                      } else {
-                        setTempFechaFin(dateStr)
-                        setSelectingStart(true)
+                      // Validar que la fecha no sea futura
+                      const hoy = new Date()
+                      hoy.setHours(23, 59, 59, 999) // Fin del día actual
+                      if (date > hoy) {
+                        return // No permitir seleccionar fechas futuras
                       }
+
+                      const dateStr = format(date, 'yyyy-MM-dd')
+                      const inicioMes = startOfMonth(date)
+                      const inicioMesStr = format(inicioMes, 'yyyy-MM-dd')
+                      
+                      // Siempre establecer desde el inicio del mes hasta la fecha seleccionada
+                      setTempFechaInicio(inicioMesStr)
+                      setTempFechaFin(dateStr)
+                      setSelectingStart(true)
+                      
+                      // Detectar cambio de mes para reiniciar valores
+                      const mesSeleccionado = format(date, 'yyyy-MM')
+                      if (lastSelectedMonth && lastSelectedMonth !== mesSeleccionado) {
+                        // El mes cambió, los valores se reiniciarán automáticamente al aplicar
+                      }
+                      setLastSelectedMonth(mesSeleccionado)
                     }}
                   />
                 </div>
@@ -581,6 +650,15 @@ const Dashboard = () => {
                         setFechaFin(tempFechaFin)
                       } else {
                         setFechaFin(tempFechaInicio)
+                      }
+                      
+                      // Detectar cambio de mes y reiniciar valores si es necesario
+                      const mesActual = format(new Date(tempFechaInicio), 'yyyy-MM')
+                      if (lastSelectedMonth && lastSelectedMonth !== mesActual) {
+                        // Mes cambió, los valores se reiniciarán automáticamente porque las fechas cambiaron
+                        setLastSelectedMonth(mesActual)
+                      } else if (!lastSelectedMonth) {
+                        setLastSelectedMonth(mesActual)
                       }
                     }
                     setShowCalendar(false)
