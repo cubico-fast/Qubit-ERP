@@ -43,15 +43,25 @@ const Ventas = () => {
         setVentas(ventasData)
         
         // Inicializar mes de inicio con el primer mes del año (Enero)
-        const networkDate = await getNetworkTime()
-        setCurrentYear(networkDate.getFullYear())
-        const primerMes = new Date(networkDate.getFullYear(), 0, 1) // Enero
-        setMesInicioSeleccionado(primerMes)
+        try {
+          const networkDate = await getNetworkTime()
+          setCurrentYear(networkDate.getFullYear())
+          const primerMes = new Date(networkDate.getFullYear(), 0, 1) // Enero
+          setMesInicioSeleccionado(primerMes)
+        } catch (dateError) {
+          console.warn('Error al obtener fecha de red, usando fecha local:', dateError)
+          // Fallback para mes de inicio
+          const hoy = new Date()
+          setCurrentYear(hoy.getFullYear())
+          const primerMes = new Date(hoy.getFullYear(), 0, 1)
+          setMesInicioSeleccionado(primerMes)
+        }
       } catch (error) {
         console.error('Error al cargar ventas:', error)
         alert('Error al cargar ventas. Por favor, recarga la página.')
         // Fallback para mes de inicio
         const hoy = new Date()
+        setCurrentYear(hoy.getFullYear())
         const primerMes = new Date(hoy.getFullYear(), 0, 1)
         setMesInicioSeleccionado(primerMes)
       } finally {
@@ -68,7 +78,14 @@ const Ventas = () => {
       if (!mesInicioSeleccionado) return
       
       try {
-        const networkDate = await getNetworkTime()
+        let networkDate
+        try {
+          networkDate = await getNetworkTime()
+        } catch (dateError) {
+          console.warn('Error al obtener fecha de red, usando fecha local:', dateError)
+          networkDate = new Date()
+        }
+        
         const añoActual = networkDate.getFullYear()
         const mesActual = networkDate.getMonth() + 1 // 1-12
         
