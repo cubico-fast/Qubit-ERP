@@ -12,6 +12,7 @@ const Ventas = () => {
   
   const [ventasMensuales, setVentasMensuales] = useState([])
   const [mesInicioSeleccionado, setMesInicioSeleccionado] = useState(null) // Mes desde el cual mostrar la gráfica
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
 
   // Función para obtener todos los meses del año actual
   const obtenerMesesDelAño = (fechaActual) => {
