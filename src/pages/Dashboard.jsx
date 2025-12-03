@@ -205,6 +205,7 @@ const Dashboard = () => {
       
       // Normalizar la fecha de la venta (puede venir en diferentes formatos)
       let fechaVenta = venta.fecha
+      let fechaVentaNormalizada = null
       
       // Si es string, asegurarse de que esté en formato YYYY-MM-DD
       if (typeof fechaVenta === 'string') {
@@ -212,35 +213,104 @@ const Dashboard = () => {
         if (fechaVenta.includes('T')) {
           fechaVenta = fechaVenta.split('T')[0]
         }
-        // Si ya está en formato YYYY-MM-DD, mantenerlo así
-        // Validar formato básico (debe tener al menos YYYY-MM-DD)
-        if (!/^\d{4}-\d{2}-\d{2}/.test(fechaVenta)) {
+        // Si tiene espacios, tomar solo la parte antes del espacio
+        if (fechaVenta.includes(' ')) {
+          fechaVenta = fechaVenta.split(' ')[0]
+        }
+        // Validar y normalizar formato YYYY-MM-DD
+        const fechaMatch = fechaVenta.match(/^(\d{4})-(\d{2})-(\d{2})/)
+        if (fechaMatch) {
+          const [, year, month, day] = fechaMatch
+          // Asegurar formato correcto con padding de ceros
+          fechaVentaNormalizada = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        } else {
           console.warn('Formato de fecha inválido:', fechaVenta, 'en venta:', venta.id)
           return false
         }
       } else if (fechaVenta?.toDate) {
         // Si es un Timestamp de Firestore (no debería pasar si se guarda como string)
-        fechaVenta = fechaVenta.toDate().toISOString().split('T')[0]
+        const date = fechaVenta.toDate()
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        fechaVentaNormalizada = `${year}-${month}-${day}`
       } else if (fechaVenta instanceof Date) {
         // Si es un objeto Date
-        fechaVenta = fechaVenta.toISOString().split('T')[0]
+        const year = fechaVenta.getFullYear()
+        const month = String(fechaVenta.getMonth() + 1).padStart(2, '0')
+        const day = String(fechaVenta.getDate()).padStart(2, '0')
+        fechaVentaNormalizada = `${year}-${month}-${day}`
       } else {
         console.warn('Tipo de fecha no reconocido:', typeof fechaVenta, 'en venta:', venta.id)
         return false
       }
       
-      // Comparar fechas en formato YYYY-MM-DD (comparación lexicográfica funciona para este formato)
-      const estaEnRango = fechaVenta >= fechaInicio && fechaVenta <= fechaFin
+      // Asegurar que fechaInicio y fechaFin también estén en formato YYYY-MM-DD correcto
+      // Normalizar también las fechas de inicio y fin para asegurar consistencia
+      let fechaInicioNormalizada = fechaInicio
+      let fechaFinNormalizada = fechaFin
       
-      // Log detallado para debugging - mostrar TODAS las ventas que se están evaluando
-      console.log(`🔍 Evaluando venta ${venta.id}:`, {
-        fechaVenta,
-        fechaInicio,
-        fechaFin,
-        comparacion: `${fechaVenta} >= ${fechaInicio} = ${fechaVenta >= fechaInicio}, ${fechaVenta} <= ${fechaFin} = ${fechaVenta <= fechaFin}`,
-        estaEnRango,
-        total: venta.total
-      })
+      // Validar formato de fechaInicio
+      if (fechaInicioNormalizada && typeof fechaInicioNormalizada === 'string') {
+        const inicioMatch = fechaInicioNormalizada.match(/^(\d{4})-(\d{2})-(\d{2})/)
+        if (inicioMatch) {
+          const [, year, month, day] = inicioMatch
+          fechaInicioNormalizada = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        }
+      }
+      
+      // Validar formato de fechaFin
+      if (fechaFinNormalizada && typeof fechaFinNormalizada === 'string') {
+        const finMatch = fechaFinNormalizada.match(/^(\d{4})-(\d{2})-(\d{2})/)
+        if (finMatch) {
+          const [, year, month, day] = finMatch
+          fechaFinNormalizada = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        }
+      }
+      
+      // Comparar fechas en formato YYYY-MM-DD (comparación lexicográfica funciona para este formato)
+      // IMPORTANTE: Solo incluir si la fecha está estrictamente dentro del rango
+      // Validar que todas las fechas estén normalizadas antes de comparar
+      if (!fechaVentaNormalizada || !fechaInicioNormalizada || !fechaFinNormalizada) {
+        console.warn('Fechas no normalizadas correctamente:', {
+          fechaVenta: fechaVentaNormalizada,
+          fechaInicio: fechaInicioNormalizada,
+          fechaFin: fechaFinNormalizada
+        })
+        return false
+      }
+      
+      const estaEnRango = fechaVentaNormalizada >= fechaInicioNormalizada && fechaVentaNormalizada <= fechaFinNormalizada
+      
+      // Log detallado solo para ventas que están en el rango o tienen problemas
+      if (estaEnRango) {
+        console.log(`✅ Venta ${venta.id} incluida en rango:`, {
+          fechaVentaOriginal: venta.fecha,
+          fechaVentaNormalizada,
+          fechaInicio: fechaInicioNormalizada,
+          fechaFin: fechaFinNormalizada,
+          total: venta.total
+        })
+      } else if (fechaVentaNormalizada && fechaInicioNormalizada && fechaFinNormalizada) {
+        // Solo loggear si la fecha está cerca del rango (dentro de 5 días) para debugging
+        const fechaVentaDate = new Date(fechaVentaNormalizada)
+        const fechaInicioDate = new Date(fechaInicioNormalizada)
+        const fechaFinDate = new Date(fechaFinNormalizada)
+        const diasDiferenciaInicio = Math.abs((fechaVentaDate - fechaInicioDate) / (1000 * 60 * 60 * 24))
+        const diasDiferenciaFin = Math.abs((fechaVentaDate - fechaFinDate) / (1000 * 60 * 60 * 24))
+        
+        if (diasDiferenciaInicio <= 5 || diasDiferenciaFin <= 5) {
+          console.log(`⚠️ Venta ${venta.id} cerca del rango pero excluida:`, {
+            fechaVentaOriginal: venta.fecha,
+            fechaVentaNormalizada,
+            fechaInicio: fechaInicioNormalizada,
+            fechaFin: fechaFinNormalizada,
+            diasDiferenciaInicio: Math.round(diasDiferenciaInicio),
+            diasDiferenciaFin: Math.round(diasDiferenciaFin),
+            total: venta.total
+          })
+        }
+      }
       
       return estaEnRango
     })
