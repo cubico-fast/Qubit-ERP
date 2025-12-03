@@ -11,6 +11,28 @@ const Ventas = () => {
   const [loading, setLoading] = useState(true)
   
   const [ventasMensuales, setVentasMensuales] = useState([])
+  const [mesInicioSeleccionado, setMesInicioSeleccionado] = useState(null) // Mes desde el cual mostrar la gráfica
+
+  // Función para obtener todos los meses del año actual
+  const obtenerMesesDelAño = (fechaActual) => {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+    const año = fechaActual.getFullYear()
+    const meses = []
+    
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(año, i, 1)
+      meses.push({
+        mes: months[i],
+        mesCompleto: months[i],
+        fecha: monthDate,
+        año: año,
+        mesNumero: i + 1,
+        mesKey: `${año}-${String(i + 1).padStart(2, '0')}`
+      })
+    }
+    
+    return meses
+  }
 
   // Cargar ventas desde Firebase al montar el componente
   useEffect(() => {
@@ -19,9 +41,19 @@ const Ventas = () => {
         setLoading(true)
         const ventasData = await getVentas()
         setVentas(ventasData)
+        
+        // Inicializar mes de inicio con el primer mes del año (Enero)
+        const networkDate = await getNetworkTime()
+        setCurrentYear(networkDate.getFullYear())
+        const primerMes = new Date(networkDate.getFullYear(), 0, 1) // Enero
+        setMesInicioSeleccionado(primerMes)
       } catch (error) {
         console.error('Error al cargar ventas:', error)
         alert('Error al cargar ventas. Por favor, recarga la página.')
+        // Fallback para mes de inicio
+        const hoy = new Date()
+        const primerMes = new Date(hoy.getFullYear(), 0, 1)
+        setMesInicioSeleccionado(primerMes)
       } finally {
         setLoading(false)
       }
@@ -33,9 +65,21 @@ const Ventas = () => {
   // Calcular ventas mensuales reales basadas en los datos de Firebase
   useEffect(() => {
     const calcularVentasMensuales = async () => {
+      if (!mesInicioSeleccionado) return
+      
       try {
         const networkDate = await getNetworkTime()
-        const meses = getLastMonths(6, networkDate)
+        const añoActual = networkDate.getFullYear()
+        const mesActual = networkDate.getMonth() + 1 // 1-12
+        
+        // Obtener todos los meses del año
+        const todosLosMeses = obtenerMesesDelAño(networkDate)
+        
+        // Filtrar desde el mes seleccionado hasta el mes actual
+        const mesInicio = mesInicioSeleccionado.getMonth() + 1
+        const mesesFiltrados = todosLosMeses.filter(mesInfo => {
+          return mesInfo.mesNumero >= mesInicio && mesInfo.mesNumero <= mesActual
+        })
         
         // Filtrar solo ventas completadas (excluir anuladas)
         const ventasCompletadas = ventas.filter(v => v.estado === 'Completada')
@@ -43,13 +87,13 @@ const Ventas = () => {
         // Crear un mapa para agrupar ventas por mes
         const ventasPorMes = new Map()
         
-        // Inicializar todos los meses con 0
-        meses.forEach(mesInfo => {
-          const mesKey = `${mesInfo.año}-${String(mesInfo.mesNumero).padStart(2, '0')}`
-          ventasPorMes.set(mesKey, {
+        // Inicializar todos los meses del año con 0 (para mostrar todos en la gráfica)
+        todosLosMeses.forEach(mesInfo => {
+          ventasPorMes.set(mesInfo.mesKey, {
             mes: mesInfo.mes,
             ventas: 0,
-            objetivo: convertValue(15000) // Objetivo fijo por ahora
+            objetivo: convertValue(15000), // Objetivo fijo por ahora
+            mostrar: mesInfo.mesNumero >= mesInicio && mesInfo.mesNumero <= mesActual
           })
         })
         
@@ -74,7 +118,7 @@ const Ventas = () => {
             const [, year, month] = fechaMatch
             const mesKey = `${year}-${month}`
             
-            // Si el mes está en nuestro rango, sumar la venta
+            // Si el mes está en nuestro mapa, sumar la venta
             if (ventasPorMes.has(mesKey)) {
               const mesData = ventasPorMes.get(mesKey)
               mesData.ventas += parseFloat(venta.total) || 0
@@ -83,11 +127,13 @@ const Ventas = () => {
           }
         })
         
-        // Convertir el mapa a array y aplicar conversión de moneda
+        // Convertir el mapa a array (mostrar todos los meses del año)
+        // Si el mes no está en el rango seleccionado, mostrar 0 en ventas pero mantener el objetivo
         const ventasData = Array.from(ventasPorMes.values()).map(mesData => ({
           mes: mesData.mes,
-          ventas: convertValue(mesData.ventas),
-          objetivo: mesData.objetivo
+          ventas: mesData.mostrar ? convertValue(mesData.ventas) : convertValue(0),
+          objetivo: mesData.objetivo,
+          mostrar: mesData.mostrar
         }))
         
         setVentasMensuales(ventasData)
@@ -96,11 +142,12 @@ const Ventas = () => {
         // Fallback: mostrar meses con 0 ventas
         try {
           const networkDate = await getNetworkTime()
-          const meses = getLastMonths(6, networkDate)
-          setVentasMensuales(meses.map(mesInfo => ({
+          const todosLosMeses = obtenerMesesDelAño(networkDate)
+          setVentasMensuales(todosLosMeses.map(mesInfo => ({
             mes: mesInfo.mes,
             ventas: convertValue(0),
-            objetivo: convertValue(15000)
+            objetivo: convertValue(15000),
+            mostrar: true
           })))
         } catch (fallbackError) {
           console.error('Error en fallback:', fallbackError)
@@ -108,10 +155,10 @@ const Ventas = () => {
       }
     }
     
-    if (ventas.length > 0 || !loading) {
+    if ((ventas.length > 0 || !loading) && mesInicioSeleccionado) {
       calcularVentasMensuales()
     }
-  }, [ventas, convertValue, loading])
+  }, [ventas, convertValue, loading, mesInicioSeleccionado])
 
   const [searchTerm, setSearchTerm] = useState('')
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null)
@@ -379,7 +426,30 @@ const Ventas = () => {
 
       {/* Chart - Tendencia de Ventas */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Tendencia de Ventas</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Tendencia de Ventas</h3>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Mostrar desde:</label>
+            <select
+              value={mesInicioSeleccionado ? `${mesInicioSeleccionado.getFullYear()}-${String(mesInicioSeleccionado.getMonth() + 1).padStart(2, '0')}` : ''}
+              onChange={(e) => {
+                const [year, month] = e.target.value.split('-')
+                const fechaInicio = new Date(parseInt(year), parseInt(month) - 1, 1)
+                setMesInicioSeleccionado(fechaInicio)
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            >
+              {(() => {
+                const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                return meses.map((mes, index) => (
+                  <option key={index} value={`${currentYear}-${String(index + 1).padStart(2, '0')}`}>
+                    {mes} {currentYear}
+                  </option>
+                ))
+              })()}
+            </select>
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={ventasMensuales}>
             <defs>
