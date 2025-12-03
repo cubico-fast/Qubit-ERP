@@ -177,33 +177,87 @@ export const getVentas = async () => {
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       
-      // Normalizar el campo 'fecha' - usar el campo 'fecha' guardado en Firestore
-      let fechaNormalizada = data.fecha
+      // Normalizar el campo 'fecha' - priorizar createdAt de Firestore si está disponible
+      // porque es más confiable (timestamp del servidor)
+      let fechaNormalizada = null
       
-      // Si fecha es un Timestamp de Firestore, convertirlo a string YYYY-MM-DD
-      if (fechaNormalizada?.toDate) {
-        fechaNormalizada = fechaNormalizada.toDate().toISOString().split('T')[0]
-      }
-      // Si fecha es un string, asegurarse de que esté en formato YYYY-MM-DD
-      else if (typeof fechaNormalizada === 'string') {
-        // Si tiene hora (formato ISO), tomar solo la parte de la fecha
-        if (fechaNormalizada.includes('T')) {
-          fechaNormalizada = fechaNormalizada.split('T')[0]
-        }
-        // Mantener el formato YYYY-MM-DD tal como está guardado en Firestore
-      }
-      // Si fecha es un objeto Date, convertirlo a string
-      else if (fechaNormalizada instanceof Date) {
-        fechaNormalizada = fechaNormalizada.toISOString().split('T')[0]
-      }
-      // Si no hay fecha, usar createdAt como fallback (solo para compatibilidad)
-      else if (!fechaNormalizada && data.createdAt) {
-        console.warn('Venta sin campo fecha, usando createdAt como fallback:', doc.id)
+      // PRIMERO: Intentar usar createdAt (timestamp del servidor - más confiable)
+      if (data.createdAt) {
         if (data.createdAt?.toDate) {
-          fechaNormalizada = data.createdAt.toDate().toISOString().split('T')[0]
+          // Es un Timestamp de Firestore
+          const fechaCreated = data.createdAt.toDate()
+          // Convertir a fecha en zona horaria de Perú (UTC-5)
+          // Obtener la fecha en formato YYYY-MM-DD considerando la zona horaria
+          const year = fechaCreated.getFullYear()
+          const month = String(fechaCreated.getMonth() + 1).padStart(2, '0')
+          const day = String(fechaCreated.getDate()).padStart(2, '0')
+          fechaNormalizada = `${year}-${month}-${day}`
         } else if (data.createdAt instanceof Date) {
-          fechaNormalizada = data.createdAt.toISOString().split('T')[0]
+          const year = data.createdAt.getFullYear()
+          const month = String(data.createdAt.getMonth() + 1).padStart(2, '0')
+          const day = String(data.createdAt.getDate()).padStart(2, '0')
+          fechaNormalizada = `${year}-${month}-${day}`
+        } else if (typeof data.createdAt === 'string') {
+          // Si createdAt es un string ISO, extraer la fecha
+          if (data.createdAt.includes('T')) {
+            fechaNormalizada = data.createdAt.split('T')[0]
+          } else {
+            fechaNormalizada = data.createdAt
+          }
         }
+      }
+      
+      // SEGUNDO: Si no hay createdAt o no se pudo usar, usar el campo 'fecha'
+      if (!fechaNormalizada && data.fecha) {
+        let fechaVenta = data.fecha
+        
+        // Si fecha es un Timestamp de Firestore, convertirlo a string YYYY-MM-DD
+        if (fechaVenta?.toDate) {
+          const fechaDate = fechaVenta.toDate()
+          const year = fechaDate.getFullYear()
+          const month = String(fechaDate.getMonth() + 1).padStart(2, '0')
+          const day = String(fechaDate.getDate()).padStart(2, '0')
+          fechaNormalizada = `${year}-${month}-${day}`
+        }
+        // Si fecha es un string, asegurarse de que esté en formato YYYY-MM-DD
+        else if (typeof fechaVenta === 'string') {
+          // Si tiene hora (formato ISO), tomar solo la parte de la fecha
+          if (fechaVenta.includes('T')) {
+            fechaVenta = fechaVenta.split('T')[0]
+          }
+          // Si tiene espacios, tomar solo la parte antes del espacio
+          if (fechaVenta.includes(' ')) {
+            fechaVenta = fechaVenta.split(' ')[0]
+          }
+          // Validar formato YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}/.test(fechaVenta)) {
+            fechaNormalizada = fechaVenta
+          }
+        }
+        // Si fecha es un objeto Date, convertirlo a string
+        else if (fechaVenta instanceof Date) {
+          const year = fechaVenta.getFullYear()
+          const month = String(fechaVenta.getMonth() + 1).padStart(2, '0')
+          const day = String(fechaVenta.getDate()).padStart(2, '0')
+          fechaNormalizada = `${year}-${month}-${day}`
+        }
+      }
+      
+      // Si aún no hay fecha normalizada, usar updatedAt como último recurso
+      if (!fechaNormalizada && data.updatedAt) {
+        console.warn('Venta sin fecha válida, usando updatedAt como último recurso:', doc.id)
+        if (data.updatedAt?.toDate) {
+          const fechaUpdated = data.updatedAt.toDate()
+          const year = fechaUpdated.getFullYear()
+          const month = String(fechaUpdated.getMonth() + 1).padStart(2, '0')
+          const day = String(fechaUpdated.getDate()).padStart(2, '0')
+          fechaNormalizada = `${year}-${month}-${day}`
+        }
+      }
+      
+      // Si aún no hay fecha, registrar advertencia
+      if (!fechaNormalizada) {
+        console.warn('Venta sin fecha válida en ningún campo:', doc.id, data)
       }
       
       ventas.push({

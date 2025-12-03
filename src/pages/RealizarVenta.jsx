@@ -631,10 +631,20 @@ const RealizarVenta = () => {
       const icbperFinal = parseFloat(formData.icbper) || 0
       const totalFinal = subtotalFinal + impuestoFinal + icbperFinal
 
+      // Obtener la fecha actual de la red para asegurar que sea la fecha correcta
+      let fechaActual = formData.fecha
+      try {
+        const networkDate = await getNetworkTime()
+        fechaActual = networkDate.toISOString().split('T')[0]
+      } catch (error) {
+        console.warn('Error al obtener fecha de la red, usando fecha del formulario:', error)
+        // Si falla, usar la fecha del formulario
+      }
+
       // Estructura completa de la venta
       const ventaData = {
-        // Información básica
-        fecha: formData.fecha,
+        // Información básica - usar fecha actual de la red, no la del formulario
+        fecha: fechaActual,
         fechaEntrega: formData.fechaEntrega,
         estado: 'Completada',
         
