@@ -536,3 +536,99 @@ export const obtenerUltimasMetricas = async (platform, accountId) => {
   }
 }
 
+// ========== FUNCIONES PARA UNIDADES DE MEDIDA ==========
+
+/**
+ * Obtener todas las unidades de medida desde Firebase
+ */
+export const getUnidadesMedida = async () => {
+  try {
+    const unidadesRef = collection(db, 'unidades_medida')
+    let querySnapshot
+    
+    try {
+      const q = query(unidadesRef, orderBy('nombre', 'asc'))
+      querySnapshot = await getDocs(q)
+    } catch (orderError) {
+      console.warn('No se pudo ordenar unidades por nombre, obteniendo sin orden:', orderError)
+      querySnapshot = await getDocs(unidadesRef)
+    }
+    
+    const unidades = []
+    querySnapshot.forEach((doc) => {
+      unidades.push({
+        id: doc.id,
+        ...doc.data()
+      })
+    })
+    
+    return unidades
+  } catch (error) {
+    console.error('Error al obtener unidades de medida:', error)
+    throw error
+  }
+}
+
+/**
+ * Guardar una nueva unidad de medida en Firebase
+ */
+export const saveUnidadMedida = async (unidad) => {
+  try {
+    const { id, ...unidadData } = unidad
+    
+    // Limpiar valores undefined y null
+    const cleanedData = Object.fromEntries(
+      Object.entries(unidadData).filter(([_, v]) => v !== undefined && v !== null)
+    )
+    
+    const unidadesRef = collection(db, 'unidades_medida')
+    const docRef = await addDoc(unidadesRef, {
+      ...cleanedData,
+      valor_posicional: parseFloat(cleanedData.valor_posicional) || parseFloat(cleanedData.cantidad) || 1,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    })
+    
+    return { id: docRef.id, ...cleanedData }
+  } catch (error) {
+    console.error('Error al guardar unidad de medida:', error)
+    throw error
+  }
+}
+
+/**
+ * Actualizar una unidad de medida existente en Firebase
+ */
+export const updateUnidadMedida = async (unidadId, unidadData) => {
+  try {
+    const cleanedData = Object.fromEntries(
+      Object.entries(unidadData).filter(([_, v]) => v !== undefined && v !== null)
+    )
+    
+    const unidadRef = doc(db, 'unidades_medida', unidadId)
+    await updateDoc(unidadRef, {
+      ...cleanedData,
+      valor_posicional: parseFloat(cleanedData.valor_posicional) || parseFloat(cleanedData.cantidad) || 1,
+      updatedAt: serverTimestamp()
+    })
+    
+    return { id: unidadId, ...cleanedData }
+  } catch (error) {
+    console.error('Error al actualizar unidad de medida:', error)
+    throw error
+  }
+}
+
+/**
+ * Eliminar una unidad de medida de Firebase
+ */
+export const deleteUnidadMedida = async (unidadId) => {
+  try {
+    const unidadRef = doc(db, 'unidades_medida', unidadId)
+    await deleteDoc(unidadRef)
+  } catch (error) {
+    console.error('Error al eliminar unidad de medida:', error)
+    throw error
+  }
+}
+

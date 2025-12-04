@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Search, Edit, Trash2, Package, TrendingUp, DollarSign, ShoppingCart, Columns, X, HelpCircle, Info, Upload, Image as ImageIcon, Copy } from 'lucide-react'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { getProductos, saveProducto, updateProducto, deleteProducto } from '../utils/firebaseUtils'
+import { getProductos, saveProducto, updateProducto, deleteProducto, getUnidadesMedida, saveUnidadMedida } from '../utils/firebaseUtils'
 import { getCurrentDate, getCurrentDateSync, formatDate } from '../utils/dateUtils'
 
 const Productos = () => {
@@ -23,6 +23,7 @@ const Productos = () => {
   const [newBrand, setNewBrand] = useState('')
   const [marcas, setMarcas] = useState(['Marca 1', 'Marca 2', 'Marca 3'])
   const [editingProductId, setEditingProductId] = useState(null)
+  const [unidadesMedida, setUnidadesMedida] = useState([])
   const [newUnit, setNewUnit] = useState({
     nombre: '',
     abreviatura: '',
@@ -171,6 +172,20 @@ const Productos = () => {
     }
     
     loadProductos()
+  }, [])
+
+  // Cargar unidades de medida desde Firebase al montar el componente
+  useEffect(() => {
+    const loadUnidadesMedida = async () => {
+      try {
+        const unidadesData = await getUnidadesMedida()
+        setUnidadesMedida(unidadesData)
+      } catch (error) {
+        console.error('Error al cargar unidades de medida:', error)
+      }
+    }
+    
+    loadUnidadesMedida()
   }, [])
 
   // Guardar en localStorage cuando cambien las columnas visibles
@@ -549,23 +564,43 @@ const Productos = () => {
     }))
   }
 
-  const handleConfirmNewUnit = () => {
+  const handleConfirmNewUnit = async () => {
     if (!newUnit.nombre.trim() || !newUnit.abreviatura.trim()) {
       alert('El nombre y la abreviatura son requeridos')
       return
     }
     
-    // Aquí puedes agregar la lógica para guardar la nueva unidad
-    console.log('Nueva unidad:', newUnit)
+    if (!newUnit.cantidad || parseFloat(newUnit.cantidad) <= 0) {
+      alert('La cantidad debe ser mayor a 0')
+      return
+    }
     
-    // Resetear formulario y cerrar modal
-    setNewUnit({
-      nombre: '',
-      abreviatura: '',
-      cantidad: '',
-      presentacion: 'SI'
-    })
-    setShowNewUnitModal(false)
+    try {
+      // Guardar la nueva unidad en Firestore
+      const unidadGuardada = await saveUnidadMedida({
+        nombre: newUnit.nombre.trim(),
+        abreviatura: newUnit.abreviatura.trim(),
+        valor_posicional: parseFloat(newUnit.cantidad) || 1,
+        presentacion: newUnit.presentacion === 'SI'
+      })
+      
+      // Actualizar el estado local con la nueva unidad
+      setUnidadesMedida([...unidadesMedida, unidadGuardada])
+      
+      alert('Unidad de medida guardada exitosamente')
+      
+      // Resetear formulario y cerrar modal
+      setNewUnit({
+        nombre: '',
+        abreviatura: '',
+        cantidad: '',
+        presentacion: 'SI'
+      })
+      setShowNewUnitModal(false)
+    } catch (error) {
+      console.error('Error al guardar unidad de medida:', error)
+      alert('Error al guardar la unidad de medida. Por favor, intenta nuevamente.')
+    }
   }
 
   const handleCancelNewUnit = () => {
@@ -597,6 +632,13 @@ const Productos = () => {
 
   // Función para obtener el multiplicador según la presentación
   const getMultiplicadorPresentacion = (presentacion) => {
+    // Primero buscar en las unidades guardadas en Firestore
+    const unidadGuardada = unidadesMedida.find(u => u.nombre === presentacion)
+    if (unidadGuardada && (unidadGuardada.valor_posicional || unidadGuardada.cantidad)) {
+      return parseFloat(unidadGuardada.valor_posicional || unidadGuardada.cantidad) || 1
+    }
+    
+    // Si no está en las unidades guardadas, usar valores predeterminados
     switch (presentacion) {
       case 'Unidad':
         return 1
@@ -608,6 +650,31 @@ const Productos = () => {
         return 1000
       case 'Caja':
         return 1 // Se usará la cantidad si está definida
+      default:
+        return 1
+    }
+  }
+
+  // Función para obtener la cantidad según la presentación
+  const getCantidadPresentacion = (presentacion) => {
+    // Primero buscar en las unidades guardadas en Firestore
+    const unidadGuardada = unidadesMedida.find(u => u.nombre === presentacion)
+    if (unidadGuardada && (unidadGuardada.valor_posicional || unidadGuardada.cantidad)) {
+      return parseFloat(unidadGuardada.valor_posicional || unidadGuardada.cantidad) || 1
+    }
+    
+    // Si no está en las unidades guardadas, usar valores predeterminados
+    switch (presentacion) {
+      case 'Unidad':
+        return 1
+      case 'Docena':
+        return 12
+      case 'Ciento':
+        return 100
+      case 'Millar':
+        return 1000
+      case 'Caja':
+        return 1 // Para Caja, mantener la cantidad manual
       default:
         return 1
     }
@@ -644,15 +711,21 @@ const Productos = () => {
       } 
       // Si se cambia la presentación y hay precioUnitario, recalcular precioVenta
       else if (field === 'presentacion') {
+        // Actualizar automáticamente la cantidad según el valor posicional de la presentación
+        const nuevaCantidad = value === 'Caja' 
+          ? presentacion.cantidad // Para Caja, mantener la cantidad manual
+          : getCantidadPresentacion(value)
+        
         const precioUnitario = parseFloat(presentacion.precioUnitario) || 0
-        const multiplicador = value === 'Caja' && presentacion.cantidad > 0
-          ? presentacion.cantidad
+        const multiplicador = value === 'Caja' && nuevaCantidad > 0
+          ? nuevaCantidad
           : getMultiplicadorPresentacion(value)
         const precioVenta = precioUnitario * multiplicador
         
         updated[index] = { 
           ...presentacion, 
           presentacion: value,
+          cantidad: nuevaCantidad,
           precioVenta: precioVenta
         }
         
@@ -1902,6 +1975,13 @@ const Productos = () => {
                                 <option value="Ciento">Ciento</option>
                                 <option value="Millar">Millar</option>
                                 <option value="Caja">Caja</option>
+                                {unidadesMedida
+                                  .filter(u => u.presentacion !== false)
+                                  .map((unidad) => (
+                                    <option key={unidad.id} value={unidad.nombre}>
+                                      {unidad.nombre} {unidad.abreviatura ? `(${unidad.abreviatura})` : ''}
+                                    </option>
+                                  ))}
                               </select>
                             </td>
                             <td className="px-4 py-3">
@@ -2290,21 +2370,24 @@ const Productos = () => {
                 />
               </div>
 
-              {/* Cantidad */}
+              {/* Cantidad (Valor posicional) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cantidad:
+                  Valor posicional (Cantidad):
                 </label>
                 <input
                   type="number"
                   name="cantidad"
                   value={newUnit.cantidad}
                   onChange={handleNewUnitChange}
-                  min="0"
-                  step="0.01"
+                  min="1"
+                  step="1"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="0"
+                  placeholder="Ej: 1, 10, 100, 1000"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Ejemplo: Unidad = 1, Decena = 10, Centena = 100, Millar = 1000
+                </p>
               </div>
 
               {/* Presentación */}
