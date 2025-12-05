@@ -1,8 +1,11 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { CurrencyProvider } from './contexts/CurrencyContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { AuthProvider } from './contexts/AuthContext'
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Productos from './pages/Productos'
 import Clientes from './pages/Clientes'
@@ -146,26 +149,42 @@ function App() {
   return (
     <ThemeProvider>
       <CurrencyProvider>
-        <Router basename={basePath}>
-          <Layout>
+        <AuthProvider>
+          <Router basename={basePath}>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/productos" element={<Productos />} />
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/contactos" element={<Contactos />} />
-              <Route path="/correo" element={<Correo />} />
-              <Route path="/correo/configuracion" element={<ConfiguracionCorreo />} />
-              <Route path="/ventas" element={<Ventas />} />
-              <Route path="/ventas/realizar" element={<RealizarVenta />} />
-              <Route path="/ventas/anular-devolver" element={<AnularDevolverVenta />} />
-              <Route path="/tareas" element={<Tareas />} />
-              <Route path="/reportes" element={<Reportes />} />
-              <Route path="/marketing" element={<Marketing />} />
-              <Route path="/marketing/configuracion" element={<ConfiguracionMarketing />} />
-              <Route path="/marketing/callback" element={<ConfiguracionMarketing />} />
+              {/* Ruta pública de login */}
+              <Route path="/login" element={<Login />} />
+              
+              {/* Rutas protegidas */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/productos" element={<Productos />} />
+                        <Route path="/clientes" element={<Clientes />} />
+                        <Route path="/contactos" element={<Contactos />} />
+                        <Route path="/correo" element={<Correo />} />
+                        <Route path="/correo/configuracion" element={<ConfiguracionCorreo />} />
+                        <Route path="/ventas" element={<Ventas />} />
+                        <Route path="/ventas/realizar" element={<RealizarVenta />} />
+                        <Route path="/ventas/anular-devolver" element={<AnularDevolverVenta />} />
+                        <Route path="/tareas" element={<Tareas />} />
+                        <Route path="/reportes" element={<Reportes />} />
+                        <Route path="/marketing" element={<Marketing />} />
+                        <Route path="/marketing/configuracion" element={<ConfiguracionMarketing />} />
+                        <Route path="/marketing/callback" element={<ConfiguracionMarketing />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
-          </Layout>
-        </Router>
+          </Router>
+        </AuthProvider>
       </CurrencyProvider>
     </ThemeProvider>
   )

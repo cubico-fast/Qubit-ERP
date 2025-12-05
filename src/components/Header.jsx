@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Bell, Search, User, Menu, Clock } from 'lucide-react'
+import { Bell, Search, User, Menu, Clock, LogOut } from 'lucide-react'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useAuth } from '../contexts/AuthContext'
 import { getNetworkTime, formatTime, formatDate } from '../utils/dateUtils'
 import ThemeSelector from './ThemeSelector'
 
 const Header = ({ toggleSidebar }) => {
   const { currency, setCurrency } = useCurrency()
   const { theme } = useTheme()
+  const { logout } = useAuth()
   const [currentTime, setCurrentTime] = useState('')
   const [currentDate, setCurrentDate] = useState('')
 
@@ -130,6 +132,17 @@ const Header = ({ toggleSidebar }) => {
             >
               AU
             </div>
+            <button
+              onClick={logout}
+              className="ml-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+              style={{
+                color: theme.colors.textSecondary
+              }}
+            >
+              <LogOut size={18} className="md:w-5 md:h-5" />
+            </button>
           </div>
         </div>
       </div>
