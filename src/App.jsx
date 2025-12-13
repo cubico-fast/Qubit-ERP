@@ -19,6 +19,7 @@ import Tareas from './pages/Tareas'
 import Reportes from './pages/Reportes'
 import Marketing from './pages/Marketing'
 import ConfiguracionMarketing from './pages/ConfiguracionMarketing'
+import AdminPanel from './pages/AdminPanel'
 
 function App() {
   // Obtener el base path desde la variable de entorno o usar el pathname actual
@@ -176,6 +177,7 @@ function App() {
                         <Route path="/marketing" element={<Marketing />} />
                         <Route path="/marketing/configuracion" element={<ConfiguracionMarketing />} />
                         <Route path="/marketing/callback" element={<ConfiguracionMarketing />} />
+                        <Route path="/admin" element={<AdminPanel />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Layout>

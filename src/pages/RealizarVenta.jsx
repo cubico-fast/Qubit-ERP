@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Save, RotateCcw, X, Plus, Search, FileText, DollarSign, Calendar, User, ShoppingCart, CheckSquare, Square, ChevronLeft, ChevronRight, GripVertical, Edit, UserPlus } from 'lucide-react'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useAuth } from '../contexts/AuthContext'
 import { getCurrentDateSync, formatDate, getNetworkTime } from '../utils/dateUtils'
 import { saveVenta, getProductos, getClientes, saveCliente, updateProducto } from '../utils/firebaseUtils'
 
 const RealizarVenta = () => {
   const { formatCurrency } = useCurrency()
+  const { companyId } = useAuth()
   const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [productos, setProductos] = useState([])
@@ -100,28 +102,32 @@ const RealizarVenta = () => {
   useEffect(() => {
     const loadProductos = async () => {
       try {
-        const productosData = await getProductos()
+        const productosData = await getProductos(companyId)
         setProductos(productosData)
       } catch (error) {
         console.error('Error al cargar productos:', error)
       }
     }
-    loadProductos()
-  }, [])
+    if (companyId) {
+      loadProductos()
+    }
+  }, [companyId])
 
   // Cargar clientes
   useEffect(() => {
     const loadClientes = async () => {
       try {
-        const clientesData = await getClientes()
+        const clientesData = await getClientes(companyId)
         setClientes(clientesData || [])
       } catch (error) {
         console.error('Error al cargar clientes:', error)
         setClientes([]) // Asegurar que siempre sea un array
       }
     }
-    loadClientes()
-  }, [])
+    if (companyId) {
+      loadClientes()
+    }
+  }, [companyId])
 
   // Filtrar productos según la búsqueda
   useEffect(() => {
@@ -631,20 +637,10 @@ const RealizarVenta = () => {
       const icbperFinal = parseFloat(formData.icbper) || 0
       const totalFinal = subtotalFinal + impuestoFinal + icbperFinal
 
-      // Obtener la fecha actual de la red para asegurar que sea la fecha correcta
-      let fechaActual = formData.fecha
-      try {
-        const networkDate = await getNetworkTime()
-        fechaActual = networkDate.toISOString().split('T')[0]
-      } catch (error) {
-        console.warn('Error al obtener fecha de la red, usando fecha del formulario:', error)
-        // Si falla, usar la fecha del formulario
-      }
-
       // Estructura completa de la venta
       const ventaData = {
-        // Información básica - usar fecha actual de la red, no la del formulario
-        fecha: fechaActual,
+        // Información básica
+        fecha: formData.fecha,
         fechaEntrega: formData.fechaEntrega,
         estado: 'Completada',
         
@@ -691,10 +687,10 @@ const RealizarVenta = () => {
       }
 
       // Guardar en Firebase
-      await saveVenta(ventaData)
+      await saveVenta(ventaData, companyId)
       
       // Actualizar el stock de los productos vendidos
-      const productos = await getProductos()
+      const productos = await getProductos(companyId)
       
       for (const productoVendido of productosSeleccionados) {
         const productoId = productoVendido.id
@@ -710,7 +706,7 @@ const RealizarVenta = () => {
           // Actualizar el stock del producto
           await updateProducto(productoId, {
             stock: nuevoStock
-          })
+          }, companyId)
         }
       }
       
@@ -1613,9 +1609,9 @@ const RealizarVenta = () => {
           onClose={() => setShowNuevoClienteModal(false)}
           onSave={async (clienteData) => {
             try {
-              const nuevoCliente = await saveCliente(clienteData)
+              const nuevoCliente = await saveCliente(clienteData, companyId)
               // Recargar lista de clientes
-              const clientesData = await getClientes()
+              const clientesData = await getClientes(companyId)
               setClientes(clientesData)
               // Seleccionar el nuevo cliente automáticamente
               handleSeleccionarCliente(nuevoCliente)

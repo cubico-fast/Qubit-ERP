@@ -1,0 +1,167 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función helper para obtener el companyId del usuario desde custom claims
+    function getUserCompanyId() {
+      return request.auth != null && request.auth.token.companyId != null 
+        ? request.auth.token.companyId 
+        : null;
+    }
+    
+    // Función helper para verificar si el usuario es administrador
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Función helper para verificar que el documento pertenece a la empresa del usuario
+    function belongsToUserCompany(companyId) {
+      return request.auth != null && 
+             companyId != null && 
+             companyId == getUserCompanyId();
+    }
+    
+    // Función helper para verificar acceso (propio companyId o admin)
+    function canAccessCompany(companyId) {
+      return isAdmin() || belongsToUserCompany(companyId);
+    }
+    
+    // Reglas para la colección companies
+    match /companies/{companyId} {
+      // Los usuarios pueden leer su propia empresa, admins pueden leer todas
+      allow read: if request.auth != null && canAccessCompany(companyId);
+      // Solo administradores pueden crear/actualizar empresas
+      allow create, update: if request.auth != null && isAdmin();
+      // Solo administradores pueden eliminar empresas
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Reglas para productos - Multi-tenant
+    match /productos/{productoId} {
+      // Lectura: solo productos de la empresa del usuario o admins
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      // Creación: solo con el companyId del usuario o admins
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      // Actualización: solo productos de la empresa del usuario o admins
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      // Eliminación: solo productos de la empresa del usuario o admins
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para ventas - Multi-tenant
+    match /ventas/{ventaId} {
+      // Lectura: solo ventas de la empresa del usuario o admins
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      // Creación: solo con el companyId del usuario o admins
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      // Actualización: solo ventas de la empresa del usuario o admins
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      // Eliminación: solo ventas de la empresa del usuario o admins
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para clientes - Multi-tenant
+    match /clientes/{clienteId} {
+      // Lectura: solo clientes de la empresa del usuario o admins
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      // Creación: solo con el companyId del usuario o admins
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      // Actualización: solo clientes de la empresa del usuario o admins
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      // Eliminación: solo clientes de la empresa del usuario o admins
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para usuarios
+    match /users/{userId} {
+      // Los usuarios pueden leer su propio documento
+      // Los admins pueden leer todos
+      allow read: if request.auth != null && 
+                     (isAdmin() || request.auth.uid == userId);
+      // Solo admins pueden crear/actualizar usuarios
+      allow create, update: if request.auth != null && isAdmin();
+      // Solo admins pueden eliminar usuarios
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Reglas para tokens de Meta (SEGURIDAD CRÍTICA)
+    // Solo el usuario puede acceder a sus propios tokens
+    match /marketing_tokens/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Permitir también acceso anónimo si userId es 'anonymous' (para desarrollo)
+      allow read, write: if userId == 'anonymous';
+    }
+    
+    // Reglas para configuración de Meta (pública, sin tokens)
+    match /marketing_config/{userId} {
+      allow read: if true;  // Configuración pública puede leerse
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Permitir también acceso anónimo si userId es 'anonymous' (para desarrollo)
+      allow write: if userId == 'anonymous';
+    }
+    
+    // Reglas para métricas de marketing - Multi-tenant
+    match /marketing_metricas/{metricaId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update, delete: if request.auth != null && 
+                                (isAdmin() || 
+                                 (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para unidades de medida - Multi-tenant
+    match /unidades_medida/{unidadId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update, delete: if request.auth != null && 
+                                (isAdmin() || 
+                                 (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para configuración de correo
+    match /emailConfig/{configId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+

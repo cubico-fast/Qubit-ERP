@@ -200,7 +200,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-primary-700 font-bold text-xl">C</span>
               </div>
-              <span className="text-xl font-bold">Cubic CRM</span>
+              <span className="text-xl font-bold">Cubic</span>
             </div>
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -299,7 +299,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
           <div className="p-4 border-t border-primary-600">
             <div className="text-primary-200 text-sm">
               <p className="font-medium">Versión 1.0.0</p>
-              <p className="text-xs mt-1">© 2024 Cubic CRM</p>
+              <p className="text-xs mt-1">© 2024 Cubic</p>
             </div>
           </div>
         </div>

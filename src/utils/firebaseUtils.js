@@ -7,28 +7,132 @@ import {
   doc, 
   query, 
   orderBy,
+  where,
+  getDoc,
+  setDoc,
   serverTimestamp 
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
+// ========== FUNCIONES PARA COMPANIES ==========
+
+/**
+ * Obtener el companyId actual del usuario desde localStorage
+ * Si no existe, retorna el companyId por defecto
+ */
+const getCurrentCompanyId = () => {
+  return localStorage.getItem('cubic_companyId') || 'empresa_001'
+}
+
+/**
+ * Crear o actualizar una empresa en Firestore
+ */
+export const createOrUpdateCompany = async (companyData) => {
+  try {
+    const { companyId, ...data } = companyData
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    
+    const companyRef = doc(db, 'companies', companyIdToUse)
+    
+    await setDoc(companyRef, {
+      companyId: companyIdToUse,
+      ...data,
+      updatedAt: serverTimestamp(),
+      createdAt: data.createdAt || serverTimestamp()
+    }, { merge: true })
+    
+    return { id: companyIdToUse, companyId: companyIdToUse, ...data }
+  } catch (error) {
+    console.error('Error al crear/actualizar empresa:', error)
+    throw error
+  }
+}
+
+/**
+ * Obtener una empresa por su companyId
+ */
+export const getCompany = async (companyId = null) => {
+  try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    const companyRef = doc(db, 'companies', companyIdToUse)
+    const companySnap = await getDoc(companyRef)
+    
+    if (companySnap.exists()) {
+      return {
+        id: companySnap.id,
+        ...companySnap.data()
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('Error al obtener empresa:', error)
+    throw error
+  }
+}
+
+/**
+ * Obtener todas las empresas (solo para administradores)
+ */
+export const getAllCompanies = async () => {
+  try {
+    const companiesRef = collection(db, 'companies')
+    const querySnapshot = await getDocs(companiesRef)
+    
+    const companies = []
+    querySnapshot.forEach((doc) => {
+      companies.push({
+        id: doc.id,
+        ...doc.data()
+      })
+    })
+    
+    return companies
+  } catch (error) {
+    console.error('Error al obtener empresas:', error)
+    throw error
+  }
+}
+
 // ========== FUNCIONES PARA PRODUCTOS ==========
 
 /**
- * Obtener todos los productos desde Firebase
+ * Obtener todos los productos desde Firebase filtrados por companyId
  */
-export const getProductos = async () => {
+export const getProductos = async (companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const productosRef = collection(db, 'productos')
     let querySnapshot
     
-    // Intentar ordenar por createdAt, si falla (por falta de índice), obtener sin ordenar
+    // Intentar ordenar por createdAt y filtrar por companyId
     try {
-      const q = query(productosRef, orderBy('createdAt', 'desc'))
+      const q = query(
+        productosRef, 
+        where('companyId', '==', companyIdToUse),
+        orderBy('createdAt', 'desc')
+      )
       querySnapshot = await getDocs(q)
     } catch (orderError) {
-      // Si falla el orderBy, obtener sin ordenar
-      console.warn('No se pudo ordenar por createdAt, obteniendo sin orden:', orderError)
-      querySnapshot = await getDocs(productosRef)
+      // Si falla el orderBy, intentar solo con el filtro de companyId
+      try {
+        const q = query(productosRef, where('companyId', '==', companyIdToUse))
+        querySnapshot = await getDocs(q)
+      } catch (filterError) {
+        // Si también falla el filtro, obtener todos y filtrar en memoria
+        console.warn('No se pudo filtrar por companyId en la query, filtrando en memoria:', filterError)
+        const allSnapshot = await getDocs(productosRef)
+        const productos = []
+        allSnapshot.forEach((doc) => {
+          const data = doc.data()
+          if (data.companyId === companyIdToUse) {
+            productos.push({
+              id: doc.id,
+              ...data
+            })
+          }
+        })
+        return productos
+      }
     }
     
     const productos = []
@@ -49,8 +153,10 @@ export const getProductos = async () => {
 /**
  * Guardar un nuevo producto en Firebase
  */
-export const saveProducto = async (producto) => {
+export const saveProducto = async (producto, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    
     // Remover el id temporal si existe, Firebase generará uno nuevo
     const { id, ...productoData } = producto
     
@@ -66,13 +172,17 @@ export const saveProducto = async (producto) => {
     if (!cleanedData.imagenes) cleanedData.imagenes = []
     if (!cleanedData.precioHistorial) cleanedData.precioHistorial = []
     
+    // Agregar companyId al producto
+    cleanedData.companyId = companyIdToUse
+    
     // Obtener el número de productos existentes para generar el ID secuencial
     const productosRef = collection(db, 'productos')
     let numeroProducto = 1
     
     try {
-      // Obtener todos los productos para contar
-      const querySnapshot = await getDocs(productosRef)
+      // Obtener todos los productos de esta empresa para contar
+      const q = query(productosRef, where('companyId', '==', companyIdToUse))
+      const querySnapshot = await getDocs(q)
       const productosExistentes = []
       querySnapshot.forEach((doc) => {
         productosExistentes.push(doc.data())
@@ -113,8 +223,10 @@ export const saveProducto = async (producto) => {
 /**
  * Actualizar un producto existente en Firebase
  */
-export const updateProducto = async (productoId, productoData) => {
+export const updateProducto = async (productoId, productoData, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    
     // Limpiar valores undefined y null que pueden causar problemas
     const cleanedData = Object.fromEntries(
       Object.entries(productoData).filter(([_, v]) => v !== undefined)
@@ -127,7 +239,20 @@ export const updateProducto = async (productoId, productoData) => {
     if (!cleanedData.imagenes) cleanedData.imagenes = []
     if (!cleanedData.precioHistorial) cleanedData.precioHistorial = []
     
+    // Asegurar que el companyId se mantenga
+    cleanedData.companyId = companyIdToUse
+    
     const productoRef = doc(db, 'productos', productoId)
+    
+    // Verificar que el producto pertenezca a la empresa antes de actualizar
+    const productoSnap = await getDoc(productoRef)
+    if (productoSnap.exists()) {
+      const productoData = productoSnap.data()
+      if (productoData.companyId !== companyIdToUse) {
+        throw new Error('No tienes permiso para actualizar este producto')
+      }
+    }
+    
     await updateDoc(productoRef, {
       ...cleanedData,
       updatedAt: serverTimestamp()
@@ -144,9 +269,20 @@ export const updateProducto = async (productoId, productoData) => {
 /**
  * Eliminar un producto de Firebase
  */
-export const deleteProducto = async (productoId) => {
+export const deleteProducto = async (productoId, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const productoRef = doc(db, 'productos', productoId)
+    
+    // Verificar que el producto pertenezca a la empresa antes de eliminar
+    const productoSnap = await getDoc(productoRef)
+    if (productoSnap.exists()) {
+      const productoData = productoSnap.data()
+      if (productoData.companyId !== companyIdToUse) {
+        throw new Error('No tienes permiso para eliminar este producto')
+      }
+    }
+    
     await deleteDoc(productoRef)
   } catch (error) {
     console.error('Error al eliminar producto:', error)
@@ -157,25 +293,127 @@ export const deleteProducto = async (productoId) => {
 // ========== FUNCIONES PARA VENTAS ==========
 
 /**
- * Obtener todas las ventas desde Firebase
+ * Obtener todas las ventas desde Firebase filtradas por companyId
  */
-export const getVentas = async () => {
+export const getVentas = async (companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const ventasRef = collection(db, 'ventas')
-    // Intentar ordenar por fecha, pero si falla (porque fecha es string), obtener sin ordenar
+    // Intentar ordenar por fecha y filtrar por companyId
     let querySnapshot
     try {
-      const q = query(ventasRef, orderBy('fecha', 'desc'))
+      const q = query(
+        ventasRef, 
+        where('companyId', '==', companyIdToUse),
+        orderBy('fecha', 'desc')
+      )
       querySnapshot = await getDocs(q)
     } catch (orderError) {
-      // Si falla el ordenamiento (puede pasar si fecha es string sin índice), obtener sin ordenar
-      console.warn('No se pudo ordenar por fecha, obteniendo sin orden:', orderError)
-      querySnapshot = await getDocs(ventasRef)
+      // Si falla el ordenamiento, intentar solo con el filtro de companyId
+      try {
+        const q = query(ventasRef, where('companyId', '==', companyIdToUse))
+        querySnapshot = await getDocs(q)
+      } catch (filterError) {
+        // Si también falla el filtro, obtener todos y filtrar en memoria
+        console.warn('No se pudo filtrar por companyId en la query, filtrando en memoria:', filterError)
+        const allSnapshot = await getDocs(ventasRef)
+        const ventas = []
+        allSnapshot.forEach((doc) => {
+          const data = doc.data()
+          if (data.companyId === companyIdToUse) {
+            // ... resto del código de normalización de fecha
+            let fechaNormalizada = null
+            
+            if (data.createdAt) {
+              if (data.createdAt?.toDate) {
+                const fechaCreated = data.createdAt.toDate()
+                const year = fechaCreated.getFullYear()
+                const month = String(fechaCreated.getMonth() + 1).padStart(2, '0')
+                const day = String(fechaCreated.getDate()).padStart(2, '0')
+                fechaNormalizada = `${year}-${month}-${day}`
+              } else if (data.createdAt instanceof Date) {
+                const year = data.createdAt.getFullYear()
+                const month = String(data.createdAt.getMonth() + 1).padStart(2, '0')
+                const day = String(data.createdAt.getDate()).padStart(2, '0')
+                fechaNormalizada = `${year}-${month}-${day}`
+              } else if (typeof data.createdAt === 'string') {
+                if (data.createdAt.includes('T')) {
+                  fechaNormalizada = data.createdAt.split('T')[0]
+                } else {
+                  fechaNormalizada = data.createdAt
+                }
+              }
+            }
+            
+            if (!fechaNormalizada && data.fecha) {
+              let fechaVenta = data.fecha
+              if (fechaVenta?.toDate) {
+                const fechaDate = fechaVenta.toDate()
+                const year = fechaDate.getFullYear()
+                const month = String(fechaDate.getMonth() + 1).padStart(2, '0')
+                const day = String(fechaDate.getDate()).padStart(2, '0')
+                fechaNormalizada = `${year}-${month}-${day}`
+              } else if (typeof fechaVenta === 'string') {
+                if (fechaVenta.includes('T')) {
+                  fechaVenta = fechaVenta.split('T')[0]
+                }
+                if (fechaVenta.includes(' ')) {
+                  fechaVenta = fechaVenta.split(' ')[0]
+                }
+                if (/^\d{4}-\d{2}-\d{2}/.test(fechaVenta)) {
+                  fechaNormalizada = fechaVenta
+                }
+              } else if (fechaVenta instanceof Date) {
+                const year = fechaVenta.getFullYear()
+                const month = String(fechaVenta.getMonth() + 1).padStart(2, '0')
+                const day = String(fechaVenta.getDate()).padStart(2, '0')
+                fechaNormalizada = `${year}-${month}-${day}`
+              }
+            }
+            
+            if (!fechaNormalizada && data.updatedAt) {
+              if (data.updatedAt?.toDate) {
+                const fechaUpdated = data.updatedAt.toDate()
+                const year = fechaUpdated.getFullYear()
+                const month = String(fechaUpdated.getMonth() + 1).padStart(2, '0')
+                const day = String(fechaUpdated.getDate()).padStart(2, '0')
+                fechaNormalizada = `${year}-${month}-${day}`
+              }
+            }
+            
+            if (!fechaNormalizada) {
+              const hoy = new Date()
+              const year = hoy.getFullYear()
+              const month = String(hoy.getMonth() + 1).padStart(2, '0')
+              const day = String(hoy.getDate()).padStart(2, '0')
+              fechaNormalizada = `${year}-${month}-${day}`
+            }
+            
+            ventas.push({
+              id: doc.id,
+              ...data,
+              fecha: fechaNormalizada
+            })
+          }
+        })
+        
+        ventas.sort((a, b) => {
+          if (!a.fecha || !b.fecha) return 0
+          return b.fecha.localeCompare(a.fecha)
+        })
+        
+        return ventas
+      }
     }
     
     const ventas = []
     querySnapshot.forEach((doc) => {
       const data = doc.data()
+      
+      // Solo procesar ventas que pertenezcan a la empresa
+      if (data.companyId !== companyIdToUse) {
+        return
+      }
       
       // Normalizar el campo 'fecha' - PRIORIZAR createdAt de Firestore (timestamp del servidor - más confiable)
       let fechaNormalizada = null
@@ -296,10 +534,15 @@ export const getVentas = async () => {
 /**
  * Guardar una nueva venta en Firebase
  */
-export const saveVenta = async (venta) => {
+export const saveVenta = async (venta, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    
     // Remover el id temporal si existe
     const { id, ...ventaData } = venta
+    
+    // Agregar companyId a la venta
+    ventaData.companyId = companyIdToUse
     
     const ventasRef = collection(db, 'ventas')
     const docRef = await addDoc(ventasRef, {
@@ -319,9 +562,23 @@ export const saveVenta = async (venta) => {
 /**
  * Actualizar una venta existente en Firebase
  */
-export const updateVenta = async (ventaId, ventaData) => {
+export const updateVenta = async (ventaId, ventaData, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const ventaRef = doc(db, 'ventas', ventaId)
+    
+    // Verificar que la venta pertenezca a la empresa antes de actualizar
+    const ventaSnap = await getDoc(ventaRef)
+    if (ventaSnap.exists()) {
+      const venta = ventaSnap.data()
+      if (venta.companyId !== companyIdToUse) {
+        throw new Error('No tienes permiso para actualizar esta venta')
+      }
+    }
+    
+    // Asegurar que el companyId se mantenga
+    ventaData.companyId = companyIdToUse
+    
     await updateDoc(ventaRef, {
       ...ventaData,
       updatedAt: serverTimestamp()
@@ -337,9 +594,20 @@ export const updateVenta = async (ventaId, ventaData) => {
 /**
  * Eliminar una venta de Firebase
  */
-export const deleteVenta = async (ventaId) => {
+export const deleteVenta = async (ventaId, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const ventaRef = doc(db, 'ventas', ventaId)
+    
+    // Verificar que la venta pertenezca a la empresa antes de eliminar
+    const ventaSnap = await getDoc(ventaRef)
+    if (ventaSnap.exists()) {
+      const venta = ventaSnap.data()
+      if (venta.companyId !== companyIdToUse) {
+        throw new Error('No tienes permiso para eliminar esta venta')
+      }
+    }
+    
     await deleteDoc(ventaRef)
   } catch (error) {
     console.error('Error al eliminar venta:', error)
@@ -350,19 +618,42 @@ export const deleteVenta = async (ventaId) => {
 // ========== FUNCIONES PARA CLIENTES ==========
 
 /**
- * Obtener todos los clientes desde Firebase
+ * Obtener todos los clientes desde Firebase filtrados por companyId
  */
-export const getClientes = async () => {
+export const getClientes = async (companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const clientesRef = collection(db, 'clientes')
     let querySnapshot
     
     try {
-      const q = query(clientesRef, orderBy('createdAt', 'desc'))
+      const q = query(
+        clientesRef, 
+        where('companyId', '==', companyIdToUse),
+        orderBy('createdAt', 'desc')
+      )
       querySnapshot = await getDocs(q)
     } catch (orderError) {
-      console.warn('No se pudo ordenar clientes por createdAt, obteniendo sin orden:', orderError)
-      querySnapshot = await getDocs(clientesRef)
+      // Si falla el orderBy, intentar solo con el filtro de companyId
+      try {
+        const q = query(clientesRef, where('companyId', '==', companyIdToUse))
+        querySnapshot = await getDocs(q)
+      } catch (filterError) {
+        // Si también falla el filtro, obtener todos y filtrar en memoria
+        console.warn('No se pudo filtrar por companyId en la query, filtrando en memoria:', filterError)
+        const allSnapshot = await getDocs(clientesRef)
+        const clientes = []
+        allSnapshot.forEach((doc) => {
+          const data = doc.data()
+          if (data.companyId === companyIdToUse) {
+            clientes.push({
+              id: doc.id,
+              ...data
+            })
+          }
+        })
+        return clientes
+      }
     }
     
     const clientes = []
@@ -383,8 +674,10 @@ export const getClientes = async () => {
 /**
  * Guardar un nuevo cliente en Firebase
  */
-export const saveCliente = async (cliente) => {
+export const saveCliente = async (cliente, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    
     const { id, ...clienteData } = cliente
     const cleanedData = {}
     
@@ -394,6 +687,9 @@ export const saveCliente = async (cliente) => {
         cleanedData[key] = clienteData[key]
       }
     }
+    
+    // Agregar companyId al cliente
+    cleanedData.companyId = companyIdToUse
     
     const clientesRef = collection(db, 'clientes')
     const docRef = await addDoc(clientesRef, {
@@ -412,8 +708,10 @@ export const saveCliente = async (cliente) => {
 /**
  * Actualizar un cliente existente en Firebase
  */
-export const updateCliente = async (clienteId, clienteData) => {
+export const updateCliente = async (clienteId, clienteData, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
+    
     const cleanedData = {}
     
     for (const key in clienteData) {
@@ -422,7 +720,20 @@ export const updateCliente = async (clienteId, clienteData) => {
       }
     }
     
+    // Asegurar que el companyId se mantenga
+    cleanedData.companyId = companyIdToUse
+    
     const clienteRef = doc(db, 'clientes', clienteId)
+    
+    // Verificar que el cliente pertenezca a la empresa antes de actualizar
+    const clienteSnap = await getDoc(clienteRef)
+    if (clienteSnap.exists()) {
+      const cliente = clienteSnap.data()
+      if (cliente.companyId !== companyIdToUse) {
+        throw new Error('No tienes permiso para actualizar este cliente')
+      }
+    }
+    
     await updateDoc(clienteRef, {
       ...cleanedData,
       updatedAt: serverTimestamp()
@@ -438,9 +749,20 @@ export const updateCliente = async (clienteId, clienteData) => {
 /**
  * Eliminar un cliente de Firebase
  */
-export const deleteCliente = async (clienteId) => {
+export const deleteCliente = async (clienteId, companyId = null) => {
   try {
+    const companyIdToUse = companyId || getCurrentCompanyId()
     const clienteRef = doc(db, 'clientes', clienteId)
+    
+    // Verificar que el cliente pertenezca a la empresa antes de eliminar
+    const clienteSnap = await getDoc(clienteRef)
+    if (clienteSnap.exists()) {
+      const cliente = clienteSnap.data()
+      if (cliente.companyId !== companyIdToUse) {
+        throw new Error('No tienes permiso para eliminar este cliente')
+      }
+    }
+    
     await deleteDoc(clienteRef)
   } catch (error) {
     console.error('Error al eliminar cliente:', error)

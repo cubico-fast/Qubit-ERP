@@ -39,6 +39,7 @@ backend/.env
 .firebase
 firebase-debug.log
 firestore-debug.log
+serviceAccountKey.json
 
 # IDE
 .vscode
