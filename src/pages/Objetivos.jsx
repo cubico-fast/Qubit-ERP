@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { Target, Plus, Edit, Trash2, CheckCircle, Circle } from 'lucide-react'
+import { Target, Plus, Edit, Trash2, CheckCircle, Circle, TrendingUp, TrendingDown } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { useCurrency } from '../contexts/CurrencyContext'
 
 const Objetivos = () => {
+  const { formatCurrency } = useCurrency()
   const [objetivos, setObjetivos] = useState([
     {
       id: 1,
@@ -37,6 +40,17 @@ const Objetivos = () => {
 
   const calcularProgreso = (actual, meta) => {
     return Math.min((actual / meta) * 100, 100).toFixed(1)
+  }
+
+  const calcularFaltante = (actual, meta) => {
+    return Math.max(meta - actual, 0)
+  }
+
+  const formatearValor = (valor, categoria) => {
+    if (categoria === 'Ventas') {
+      return formatCurrency(valor)
+    }
+    return valor.toLocaleString('es-ES')
   }
 
   const getEstadoColor = (estado) => {
@@ -175,16 +189,147 @@ const Objetivos = () => {
                 </div>
               </div>
 
-              {/* Barra de Progreso */}
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span style={{ color: 'var(--color-text-secondary)' }}>
-                    Progreso: {progreso}%
-                  </span>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>
-                    {objetivo.actual.toLocaleString()} / {objetivo.meta.toLocaleString()}
+              {/* Métrica Comparativa Visual */}
+              <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--color-background)' }}>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Valor Actual */}
+                  <div className="text-center p-3 rounded-lg border-2 border-blue-200" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+                    <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                      Actual
+                    </p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {formatearValor(objetivo.actual, objetivo.categoria)}
+                    </p>
+                  </div>
+                  
+                  {/* Meta Deseada */}
+                  <div className="text-center p-3 rounded-lg border-2 border-green-200" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+                    <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                      Meta
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {formatearValor(objetivo.meta, objetivo.categoria)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Gráfico de Barras Comparativo */}
+                <div className="mb-3" style={{ height: '120px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={[
+                        {
+                          name: 'Actual',
+                          valor: objetivo.actual,
+                          color: '#3b82f6'
+                        },
+                        {
+                          name: 'Meta',
+                          valor: objetivo.meta,
+                          color: '#22c55e'
+                        }
+                      ]}
+                      layout="vertical"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        type="number" 
+                        domain={[0, objetivo.meta * 1.1]}
+                        tickFormatter={(value) => {
+                          if (objetivo.categoria === 'Ventas') {
+                            return formatCurrency(value)
+                          }
+                          return value.toLocaleString('es-ES')
+                        }}
+                      />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={60}
+                      />
+                      <Tooltip
+                        formatter={(value) => {
+                          return formatearValor(value, objetivo.categoria)
+                        }}
+                      />
+                      <Bar 
+                        dataKey="valor" 
+                        radius={[0, 8, 8, 0]}
+                      >
+                        <Cell fill="#3b82f6" />
+                        <Cell fill="#22c55e" />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Información de Diferencia */}
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    {objetivo.actual >= objetivo.meta ? (
+                      <>
+                        <CheckCircle size={16} className="text-green-600" />
+                        <span className="text-green-600 font-semibold">
+                          Objetivo alcanzado
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp size={16} className="text-orange-600" />
+                        <span style={{ color: 'var(--color-text-secondary)' }}>
+                          Faltan: <span className="font-semibold text-orange-600">
+                            {formatearValor(calcularFaltante(objetivo.actual, objetivo.meta), objetivo.categoria)}
+                          </span>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <span className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                    {progreso}% completado
                   </span>
                 </div>
+
+                {/* Comparación Visual Adicional - Barras Horizontales */}
+                <div className="mt-4 space-y-2">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium text-blue-600">Actual</span>
+                      <span className="font-semibold">{formatearValor(objetivo.actual, objetivo.categoria)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4 relative overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                        style={{ 
+                          width: `${Math.min((objetivo.actual / objetivo.meta) * 100, 100)}%`,
+                          maxWidth: '100%'
+                        }}
+                      >
+                        <span className="text-xs font-semibold text-white">
+                          {Math.min((objetivo.actual / objetivo.meta) * 100, 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium text-green-600">Meta</span>
+                      <span className="font-semibold">{formatearValor(objetivo.meta, objetivo.categoria)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4 relative overflow-hidden">
+                      <div
+                        className="bg-green-500 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                        style={{ width: '100%' }}
+                      >
+                        <span className="text-xs font-semibold text-white">100%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra de Progreso */}
+              <div className="mb-4">
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <div
                     className="bg-primary-600 h-3 rounded-full transition-all duration-300"
