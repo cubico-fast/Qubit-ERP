@@ -19,7 +19,9 @@ import {
   FileText,
   XCircle,
   RotateCcw,
-  Megaphone
+  Megaphone,
+  Target,
+  Brain
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
@@ -28,6 +30,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
   const inicioArrastreRef = useRef(null)
   const sidebarRef = useRef(null)
   const [ventasMenuAbierto, setVentasMenuAbierto] = useState(false)
+  const [reportesMenuAbierto, setReportesMenuAbierto] = useState(false)
 
   const menuItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -46,7 +49,15 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
       ]
     },
     { path: '/tareas', icon: CheckSquare, label: 'Tareas' },
-    { path: '/reportes', icon: BarChart3, label: 'Reportes' },
+    { 
+      path: '/reportes', 
+      icon: BarChart3, 
+      label: 'Reportes',
+      submenu: [
+        { path: '/reportes/objetivos', icon: Target, label: 'Objetivos' },
+        { path: '/reportes/ia', icon: Brain, label: 'Reporte IA' }
+      ]
+    },
     { path: '/marketing', icon: Megaphone, label: 'Marketing' },
   ]
 
@@ -54,6 +65,13 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
   useEffect(() => {
     if (location.pathname.startsWith('/ventas')) {
       setVentasMenuAbierto(true)
+    }
+  }, [location.pathname])
+
+  // Abrir el menú de Reportes si estamos en alguna de sus rutas
+  useEffect(() => {
+    if (location.pathname.startsWith('/reportes')) {
+      setReportesMenuAbierto(true)
     }
   }, [location.pathname])
 
@@ -221,6 +239,8 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
               if (item.submenu) {
                 const submenuActive = item.submenu.some(sub => isActive(sub.path))
                 const isVentasMenu = item.path === '/ventas'
+                const isReportesMenu = item.path === '/reportes'
+                const menuAbierto = (isVentasMenu && ventasMenuAbierto) || (isReportesMenu && reportesMenuAbierto)
                 
                 return (
                   <div key={item.path}>
@@ -228,6 +248,8 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
                       onClick={() => {
                         if (isVentasMenu) {
                           setVentasMenuAbierto(!ventasMenuAbierto)
+                        } else if (isReportesMenu) {
+                          setReportesMenuAbierto(!reportesMenuAbierto)
                         }
                       }}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
@@ -243,13 +265,13 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
                       <ChevronDown 
                         size={18} 
                         className={`transition-transform duration-200 ${
-                          (isVentasMenu && ventasMenuAbierto) ? 'rotate-180' : ''
+                          menuAbierto ? 'rotate-180' : ''
                         }`}
                       />
                     </button>
                     
                     {/* Submenú */}
-                    {isVentasMenu && ventasMenuAbierto && (
+                    {menuAbierto && (
                       <div className="ml-4 mt-2 space-y-1 border-l-2 border-primary-600 pl-4">
                         {item.submenu.map((subItem) => {
                           const SubIcon = subItem.icon

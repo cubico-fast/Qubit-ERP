@@ -17,6 +17,8 @@ import Correo from './pages/Correo'
 import ConfiguracionCorreo from './pages/ConfiguracionCorreo'
 import Tareas from './pages/Tareas'
 import Reportes from './pages/Reportes'
+import Objetivos from './pages/Objetivos'
+import ReporteIA from './pages/ReporteIA'
 import Marketing from './pages/Marketing'
 import ConfiguracionMarketing from './pages/ConfiguracionMarketing'
 import AdminPanel from './pages/AdminPanel'
@@ -174,6 +176,8 @@ function App() {
                         <Route path="/ventas/anular-devolver" element={<AnularDevolverVenta />} />
                         <Route path="/tareas" element={<Tareas />} />
                         <Route path="/reportes" element={<Reportes />} />
+                        <Route path="/reportes/objetivos" element={<Objetivos />} />
+                        <Route path="/reportes/ia" element={<ReporteIA />} />
                         <Route path="/marketing" element={<Marketing />} />
                         <Route path="/marketing/configuracion" element={<ConfiguracionMarketing />} />
                         <Route path="/marketing/callback" element={<ConfiguracionMarketing />} />
