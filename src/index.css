@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================
+   FIX PARA MODALES - Cubrir TODA la pantalla
+   ===================================================== */
+
+/* Todos los overlays de modales deben cubrir toda la pantalla */
+.fixed.inset-0 {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+}
+
+/* Modales con fondo oscuro - z-index muy alto */
+.fixed.inset-0.bg-black:not(.sidebar-overlay),
+.fixed.inset-0[class*="bg-opacity"]:not(.sidebar-overlay) {
+  z-index: 9999 !important;
+  isolation: isolate;
+}
+
+/* Excepción: el sidebar overlay debe tener z-index menor */
+/* El sidebar overlay usa z-index 999 para estar debajo de modales pero sobre el contenido */
+.sidebar-overlay {
+  z-index: 999 !important;
+  /* El overlay NO debe cubrir el sidebar, solo el contenido */
+  left: 256px !important; /* w-64 = 16rem = 256px */
+}
+
 /* Variables CSS para temas */
 :root {
   --color-primary-50: #f0f9ff;
@@ -22,6 +55,7 @@
   --color-sidebar: linear-gradient(to bottom, #0369a1, #075985);
   --color-card: #ffffff;
   --font-family: 'Inter', sans-serif;
+  --hoja-recepcion-header-bg: #f3f4f6;
 }
 
 @layer base {
@@ -67,19 +101,50 @@
 
   /* Aumentar tamaño de fuente base en móvil */
   /* Estilos específicos para móvil - Muy agresivos */
-  @media screen and (max-width: 768px) {
+  @media screen and (max-width: 1024px) {
     /* Sidebar en móvil - asegurar que sea clickeable cuando está abierto */
-    aside[style*="position: fixed"] {
+    aside {
       pointer-events: auto !important;
-      touch-action: auto !important;
+      touch-action: pan-y !important;
+      -webkit-overflow-scrolling: touch !important;
+      z-index: 1000 !important;
+    }
+    
+    /* Asegurar que TODOS los elementos dentro del sidebar sean clickeables */
+    aside * {
+      pointer-events: auto !important;
     }
     
     /* Asegurar que los botones y enlaces del sidebar sean clickeables */
-    aside a, aside button {
+    aside a, aside button, aside div {
       pointer-events: auto !important;
       touch-action: manipulation !important;
       -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2) !important;
     }
+    
+    /* Tamaño mínimo para elementos interactivos */
+    aside a, aside button {
+      min-height: 44px !important;
+      min-width: 44px !important;
+    }
+    
+    /* Overlay del sidebar debe ser clickeable */
+    .sidebar-overlay {
+      pointer-events: auto !important;
+      touch-action: auto !important;
+      cursor: pointer;
+    }
+    
+    /* Mejorar área de scroll del sidebar */
+    aside nav {
+      touch-action: pan-y !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain;
+      pointer-events: auto !important;
+    }
+  }
+  
+  @media screen and (max-width: 768px) {
     html {
       font-size: 16px !important;
       width: 100% !important;
@@ -125,9 +190,17 @@
     }
     
     /* Asegurar que el contenedor flex principal use todo el ancho */
-    div.flex {
+    /* EXCLUIR elementos con flex-shrink-0 (avatares, iconos, botones fijos) */
+    div.flex:not(.flex-shrink-0) {
       width: 100% !important;
       max-width: 100% !important;
+    }
+    
+    /* Mantener tamaño fijo en elementos que no deben expandirse */
+    .flex-shrink-0 {
+      width: auto !important;
+      max-width: none !important;
+      flex-shrink: 0 !important;
     }
     
     /* Asegurar que las cards usen todo el ancho disponible */
@@ -307,8 +380,14 @@
   color: #ffffff !important;
 }
 
-.theme-dark *:not(svg):not(path) {
+.theme-dark *:not(svg):not(path):not([style*="background-color: #ffffff"]):not([style*="backgroundColor: '#ffffff'"]) {
   color: #ffffff !important;
+}
+
+/* EXCEPCIÓN: Elementos con fondo blanco deben tener texto negro */
+.theme-dark [style*="background-color: #ffffff"] *,
+.theme-dark [style*="backgroundColor: '#ffffff'"] * {
+  color: #000000 !important;
 }
 
 .theme-dark h1,
@@ -369,9 +448,9 @@
   color: #ffffff !important;
 }
 
-.theme-dark input,
-.theme-dark textarea,
-.theme-dark select {
+.theme-dark input:not(.hoja-recepcion-modal input):not(.hoja-recepcion-modal table input),
+.theme-dark textarea:not(.hoja-recepcion-modal textarea):not(.hoja-recepcion-modal table textarea),
+.theme-dark select:not(.hoja-recepcion-modal select):not(.hoja-recepcion-modal table select) {
   background-color: var(--color-surface) !important;
   border-color: var(--color-border) !important;
   color: #ffffff !important;
@@ -392,104 +471,104 @@
   color: #ffffff !important;
 }
 
-/* Estilos específicos para tema Hacker - TODO verde sobre negro */
-.theme-hacker {
+/* Estilos específicos para tema Code - TODO verde sobre negro */
+.theme-code {
   background-color: #000000 !important;
   color: #00ff00 !important;
 }
 
 /* Forzar que TODOS los elementos tengan fondo negro y texto verde */
-.theme-hacker *:not(svg):not(path):not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+.theme-code *:not(svg):not(path):not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
   color: #00ff00 !important;
 }
 
 /* Forzar que TODOS los fondos sean negros */
-.theme-hacker,
-.theme-hacker body,
-.theme-hacker #root,
-.theme-hacker main,
-.theme-hacker section,
-.theme-hacker article,
-.theme-hacker div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+.theme-code,
+.theme-code body,
+.theme-code #root,
+.theme-code main,
+.theme-code section,
+.theme-code article,
+.theme-code div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
   background-color: #000000 !important;
 }
 
-.theme-hacker h1,
-.theme-hacker h2,
-.theme-hacker h3,
-.theme-hacker h4,
-.theme-hacker h5,
-.theme-hacker h6,
-.theme-hacker p,
-.theme-hacker span,
-.theme-hacker div,
-.theme-hacker label,
-.theme-hacker li,
-.theme-hacker td,
-.theme-hacker th {
+.theme-code h1,
+.theme-code h2,
+.theme-code h3,
+.theme-code h4,
+.theme-code h5,
+.theme-code h6,
+.theme-code p,
+.theme-code span,
+.theme-code div,
+.theme-code label,
+.theme-code li,
+.theme-code td,
+.theme-code th {
   color: #00ff00 !important;
 }
 
-.theme-hacker .text-gray-900,
-.theme-hacker .text-gray-800,
-.theme-hacker .text-gray-700,
-.theme-hacker .text-gray-600,
-.theme-hacker .text-gray-500,
-.theme-hacker .text-gray-400,
-.theme-hacker .text-gray-300,
-.theme-hacker .text-gray-200,
-.theme-hacker .text-gray-100 {
+.theme-code .text-gray-900,
+.theme-code .text-gray-800,
+.theme-code .text-gray-700,
+.theme-code .text-gray-600,
+.theme-code .text-gray-500,
+.theme-code .text-gray-400,
+.theme-code .text-gray-300,
+.theme-code .text-gray-200,
+.theme-code .text-gray-100 {
   color: #00ff00 !important;
 }
 
-.theme-hacker .text-primary-600,
-.theme-hacker .text-primary-700,
-.theme-hacker .text-blue-600,
-.theme-hacker .text-blue-700 {
+.theme-code .text-primary-600,
+.theme-code .text-primary-700,
+.theme-code .text-blue-600,
+.theme-code .text-blue-700 {
   color: #00ff00 !important;
 }
 
-.theme-hacker .card {
+.theme-code .card {
   background-color: #000000 !important;
   border-color: #00ff00 !important;
   color: #00ff00 !important;
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.2) !important;
 }
 
-.theme-hacker input,
-.theme-hacker textarea,
-.theme-hacker select {
+.theme-code input,
+.theme-code textarea,
+.theme-code select {
   background-color: #000000 !important;
   border-color: #00ff00 !important;
   color: #00ff00 !important;
 }
 
-.theme-hacker input:focus,
-.theme-hacker textarea:focus,
-.theme-hacker select:focus {
+.theme-code input:focus,
+.theme-code textarea:focus,
+.theme-code select:focus {
   outline: 1px solid #00ff00 !important;
   box-shadow: 0 0 5px rgba(0, 255, 0, 0.3) !important;
 }
 
-.theme-hacker ::placeholder {
+.theme-code ::placeholder {
   color: #00ff88 !important;
   opacity: 0.7;
 }
 
 /* Forzar que inputs con clases específicas también sigan el tema */
-.theme-hacker input[class*="bg-gray"],
-.theme-hacker input[class*="bg-white"],
-.theme-hacker select[class*="bg-gray"],
-.theme-hacker select[class*="bg-white"],
-.theme-hacker textarea[class*="bg-gray"],
-.theme-hacker textarea[class*="bg-white"] {
+.theme-code input[class*="bg-gray"],
+.theme-code input[class*="bg-white"],
+.theme-code select[class*="bg-gray"],
+.theme-code select[class*="bg-white"],
+.theme-code textarea[class*="bg-gray"],
+.theme-code textarea[class*="bg-white"] {
   background-color: #000000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;
 }
 
 /* Efecto de terminal para tema hacker */
-.theme-hacker::before {
+.theme-code::before {
   content: '';
   position: fixed;
   top: 0;
@@ -508,66 +587,69 @@
   z-index: 0;
 }
 
-.theme-hacker > * {
+.theme-code > * {
   position: relative;
   z-index: 1;
 }
 
 /* Mejorar visibilidad de botones en temas oscuros - TODO gris/blanco */
-.theme-dark button,
+.theme-dark button:not(.editor-pdf-modal button),
 .theme-dark .btn-primary,
 .theme-dark .btn-secondary,
-.theme-dark [role="button"] {
+.theme-dark [role="button"]:not(.editor-pdf-modal [role="button"]) {
   color: #ffffff !important;
 }
 
 /* Forzar que TODOS los botones con colores primarios/azules sean grises en tema oscuro */
-.theme-dark button[class*="bg-primary"],
-.theme-dark button[class*="bg-blue"],
-.theme-dark .btn-primary,
-.theme-dark [class*="bg-primary-600"],
-.theme-dark [class*="bg-blue-600"] {
+.theme-dark button[class*="bg-primary"]:not(.editor-plantillas-btn),
+.theme-dark button[class*="bg-blue"]:not(.editor-plantillas-btn),
+.theme-dark .btn-primary:not(.editor-plantillas-btn),
+.theme-dark [class*="bg-primary-600"]:not(.editor-plantillas-btn),
+.theme-dark [class*="bg-blue-600"]:not(.editor-plantillas-btn) {
   background-color: #4b5563 !important;
   border-color: #6b7280 !important;
   color: #ffffff !important;
 }
 
-.theme-dark button[class*="bg-primary"]:hover,
-.theme-dark button[class*="bg-blue"]:hover,
-.theme-dark .btn-primary:hover,
-.theme-dark [class*="bg-primary-600"]:hover,
-.theme-dark [class*="bg-blue-600"]:hover {
+.theme-dark button[class*="bg-primary"]:hover:not(.editor-plantillas-btn),
+.theme-dark button[class*="bg-blue"]:hover:not(.editor-plantillas-btn),
+.theme-dark .btn-primary:hover:not(.editor-plantillas-btn),
+.theme-dark [class*="bg-primary-600"]:hover:not(.editor-plantillas-btn),
+.theme-dark [class*="bg-blue-600"]:hover:not(.editor-plantillas-btn) {
   background-color: #6b7280 !important;
   color: #ffffff !important;
 }
 
-.theme-dark button:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+.theme-dark button:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn),
+.theme-Dark button:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn) {
   background-color: var(--color-surface) !important;
   border-color: var(--color-border) !important;
   color: #ffffff !important;
 }
 
-.theme-dark button:hover:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+.theme-dark button:hover:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn),
+.theme-Dark button:hover:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn) {
   background-color: #374151 !important;
   color: #ffffff !important;
 }
 
+
 /* Mejorar visibilidad de botones en tema hacker - TODO verde */
-.theme-hacker button,
-.theme-hacker .btn-primary,
-.theme-hacker .btn-secondary,
-.theme-hacker [role="button"] {
+.theme-code button,
+.theme-code .btn-primary,
+.theme-code .btn-secondary,
+.theme-code [role="button"] {
   color: #00ff00 !important;
   border-color: #00ff00 !important;
 }
 
-.theme-hacker button:not(.bg-primary-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-red-600):not(.bg-yellow-500) {
+.theme-code button:not(.bg-primary-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-red-600):not(.bg-yellow-500) {
   background-color: #0a0a0a !important;
   border-color: #00ff00 !important;
   color: #00ff00 !important;
 }
 
-.theme-hacker button:hover:not(.bg-primary-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-red-600):not(.bg-yellow-500) {
+.theme-code button:hover:not(.bg-primary-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-red-600):not(.bg-yellow-500) {
   background-color: #0f0f0f !important;
   box-shadow: 0 0 8px rgba(0, 255, 0, 0.4) !important;
   color: #00ff00 !important;
@@ -593,25 +675,25 @@
   color: #ffffff !important;
 }
 
-.theme-hacker a {
+.theme-code a {
   color: #00ff00 !important;
 }
 
-.theme-hacker a:hover {
+.theme-code a:hover {
   color: #00ff88 !important;
 }
 
 /* Mejorar visibilidad de tablas */
-.theme-dark table,
-.theme-dark th,
-.theme-dark td {
+.theme-dark table:not(.hoja-recepcion-modal table),
+.theme-dark th:not(.hoja-recepcion-modal th),
+.theme-dark td:not(.hoja-recepcion-modal td) {
   color: #ffffff !important;
   border-color: var(--color-border) !important;
 }
 
-.theme-hacker table,
-.theme-hacker th,
-.theme-hacker td {
+.theme-code table,
+.theme-code th,
+.theme-code td {
   color: #00ff00 !important;
   border-color: #00ff00 !important;
 }
@@ -681,65 +763,65 @@
 }
 
 /* Tema Hacker: TODO verde */
-.theme-hacker .text-gray-50,
-.theme-hacker .text-gray-100,
-.theme-hacker .text-gray-200,
-.theme-hacker .text-gray-300,
-.theme-hacker .text-gray-400,
-.theme-hacker .text-gray-500,
-.theme-hacker .text-gray-600,
-.theme-hacker .text-gray-700,
-.theme-hacker .text-gray-800,
-.theme-hacker .text-gray-900,
-.theme-hacker .text-slate-50,
-.theme-hacker .text-slate-100,
-.theme-hacker .text-slate-200,
-.theme-hacker .text-slate-300,
-.theme-hacker .text-slate-400,
-.theme-hacker .text-slate-500,
-.theme-hacker .text-slate-600,
-.theme-hacker .text-slate-700,
-.theme-hacker .text-slate-800,
-.theme-hacker .text-slate-900,
-.theme-hacker .text-zinc-50,
-.theme-hacker .text-zinc-100,
-.theme-hacker .text-zinc-200,
-.theme-hacker .text-zinc-300,
-.theme-hacker .text-zinc-400,
-.theme-hacker .text-zinc-500,
-.theme-hacker .text-zinc-600,
-.theme-hacker .text-zinc-700,
-.theme-hacker .text-zinc-800,
-.theme-hacker .text-zinc-900 {
+.theme-code .text-gray-50,
+.theme-code .text-gray-100,
+.theme-code .text-gray-200,
+.theme-code .text-gray-300,
+.theme-code .text-gray-400,
+.theme-code .text-gray-500,
+.theme-code .text-gray-600,
+.theme-code .text-gray-700,
+.theme-code .text-gray-800,
+.theme-code .text-gray-900,
+.theme-code .text-slate-50,
+.theme-code .text-slate-100,
+.theme-code .text-slate-200,
+.theme-code .text-slate-300,
+.theme-code .text-slate-400,
+.theme-code .text-slate-500,
+.theme-code .text-slate-600,
+.theme-code .text-slate-700,
+.theme-code .text-slate-800,
+.theme-code .text-slate-900,
+.theme-code .text-zinc-50,
+.theme-code .text-zinc-100,
+.theme-code .text-zinc-200,
+.theme-code .text-zinc-300,
+.theme-code .text-zinc-400,
+.theme-code .text-zinc-500,
+.theme-code .text-zinc-600,
+.theme-code .text-zinc-700,
+.theme-code .text-zinc-800,
+.theme-code .text-zinc-900 {
   color: #00ff00 !important;
 }
 
-.theme-hacker .text-black,
-.theme-hacker .text-white {
+.theme-code .text-black,
+.theme-code .text-white {
   color: #00ff00 !important;
 }
 
 /* Colores primarios y azules en tema hacker -> verde */
-.theme-hacker .text-primary-50,
-.theme-hacker .text-primary-100,
-.theme-hacker .text-primary-200,
-.theme-hacker .text-primary-300,
-.theme-hacker .text-primary-400,
-.theme-hacker .text-primary-500,
-.theme-hacker .text-primary-600,
-.theme-hacker .text-primary-700,
-.theme-hacker .text-primary-800,
-.theme-hacker .text-primary-900,
-.theme-hacker .text-blue-50,
-.theme-hacker .text-blue-100,
-.theme-hacker .text-blue-200,
-.theme-hacker .text-blue-300,
-.theme-hacker .text-blue-400,
-.theme-hacker .text-blue-500,
-.theme-hacker .text-blue-600,
-.theme-hacker .text-blue-700,
-.theme-hacker .text-blue-800,
-.theme-hacker .text-blue-900 {
+.theme-code .text-primary-50,
+.theme-code .text-primary-100,
+.theme-code .text-primary-200,
+.theme-code .text-primary-300,
+.theme-code .text-primary-400,
+.theme-code .text-primary-500,
+.theme-code .text-primary-600,
+.theme-code .text-primary-700,
+.theme-code .text-primary-800,
+.theme-code .text-primary-900,
+.theme-code .text-blue-50,
+.theme-code .text-blue-100,
+.theme-code .text-blue-200,
+.theme-code .text-blue-300,
+.theme-code .text-blue-400,
+.theme-code .text-blue-500,
+.theme-code .text-blue-600,
+.theme-code .text-blue-700,
+.theme-code .text-blue-800,
+.theme-code .text-blue-900 {
   color: #00ff00 !important;
 }
 
@@ -754,12 +836,12 @@
   fill: #e2e8f0 !important;
 }
 
-.theme-hacker svg:not([class*="text-"]) {
+.theme-code svg:not([class*="text-"]) {
   color: #00ff00 !important;
   fill: #00ff00 !important;
 }
 
-.theme-hacker svg[class*="text-"] {
+.theme-code svg[class*="text-"] {
   color: #00ff00 !important;
   fill: #00ff00 !important;
 }
@@ -774,12 +856,12 @@
   color: #ffffff !important;
 }
 
-.theme-hacker label,
-.theme-hacker .text-xs,
-.theme-hacker .text-sm,
-.theme-hacker .text-base,
-.theme-hacker .text-lg,
-.theme-hacker .text-xl {
+.theme-code label,
+.theme-code .text-xs,
+.theme-code .text-sm,
+.theme-code .text-base,
+.theme-code .text-lg,
+.theme-code .text-xl {
   color: #00ff00 !important;
 }
 
@@ -792,9 +874,9 @@
   border-color: var(--color-border) !important;
 }
 
-.theme-hacker .badge,
-.theme-hacker [class*="badge"],
-.theme-hacker [class*="Badge"] {
+.theme-code .badge,
+.theme-code [class*="badge"],
+.theme-code [class*="Badge"] {
   color: #00ff00 !important;
   background-color: #000000 !important;
   border-color: #00ff00 !important;
@@ -809,9 +891,9 @@
   border-color: var(--color-border) !important;
 }
 
-.theme-hacker [role="menu"],
-.theme-hacker [role="menuitem"],
-.theme-hacker .dropdown {
+.theme-code [role="menu"],
+.theme-code [role="menuitem"],
+.theme-code .dropdown {
   background-color: #000000 !important;
   color: #00ff00 !important;
   border-color: #00ff00 !important;
@@ -840,7 +922,7 @@
 
 .theme-dark section,
 .theme-dark article,
-.theme-dark aside,
+.theme-dark aside:not(.sidebar-gradient),
 .theme-dark header,
 .theme-dark footer,
 .theme-dark nav {
@@ -848,32 +930,53 @@
   border-color: #4b5563 !important;
 }
 
+/* Quitar borde del sidebar - REGLAS MUY ESPECÍFICAS */
+.theme-dark aside.sidebar-gradient,
+.theme-Dark aside.sidebar-gradient,
+aside.sidebar-gradient {
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Quitar bordes de elementos dentro del sidebar también */
+.theme-dark aside.sidebar-gradient *,
+.theme-Dark aside.sidebar-gradient *,
+aside.sidebar-gradient * {
+  border-right: none !important;
+}
+
 /* Reglas adicionales para tema hacker - Forzar fondo negro en TODOS los elementos */
-.theme-hacker div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-cyan"]):not([class*="bg-purple"]):not([class*="bg-pink"]):not([class*="bg-orange"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-black"]) {
+.theme-code div:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-cyan"]):not([class*="bg-purple"]):not([class*="bg-pink"]):not([class*="bg-orange"]):not([class*="bg-indigo"]):not([class*="bg-violet"]):not([class*="bg-black"]) {
   background-color: #000000 !important;
 }
 
-.theme-hacker section,
-.theme-hacker article,
-.theme-hacker aside,
-.theme-hacker header,
-.theme-hacker footer,
-.theme-hacker nav {
+.theme-code section,
+.theme-code article,
+.theme-code aside,
+.theme-code header,
+.theme-code footer,
+.theme-code nav {
   background-color: #000000 !important;
   border-color: #00ff00 !important;
 }
 
 /* Estilo claro y visible para elementos seleccionados del menú en modo hacker */
-.theme-hacker nav a.bg-white,
-.theme-hacker nav a[class*="bg-white"],
-.theme-hacker nav a[class*="bg-primary"],
-.theme-hacker nav button.bg-white,
-.theme-hacker nav button[class*="bg-white"],
-.theme-hacker nav button[class*="bg-primary"],
-.theme-hacker nav .bg-white,
-.theme-hacker nav .bg-primary-600,
-.theme-hacker aside nav a[class*="shadow-lg"],
-.theme-hacker aside nav button[class*="shadow-lg"] {
+.theme-code nav a.bg-white,
+.theme-code nav a[class*="bg-white"],
+.theme-code nav a[class*="bg-primary"],
+.theme-code nav button.bg-white,
+.theme-code nav button[class*="bg-white"],
+.theme-code nav button[class*="bg-primary"],
+.theme-code nav .bg-white,
+.theme-code nav .bg-primary-600,
+.theme-code aside nav a[class*="shadow-lg"],
+.theme-code aside nav button[class*="shadow-lg"] {
   border: 2px solid #ffffff !important;
   background-color: rgba(0, 255, 0, 0.15) !important;
   color: #00ff00 !important;
@@ -885,14 +988,14 @@
 }
 
 /* Outline blanco visible alrededor del elemento seleccionado */
-.theme-hacker nav a.bg-white::after,
-.theme-hacker nav a[class*="bg-white"]::after,
-.theme-hacker nav a[class*="bg-primary"]::after,
-.theme-hacker nav button.bg-white::after,
-.theme-hacker nav button[class*="bg-white"]::after,
-.theme-hacker nav button[class*="bg-primary"]::after,
-.theme-hacker aside nav a[class*="shadow-lg"]::after,
-.theme-hacker aside nav button[class*="shadow-lg"]::after {
+.theme-code nav a.bg-white::after,
+.theme-code nav a[class*="bg-white"]::after,
+.theme-code nav a[class*="bg-primary"]::after,
+.theme-code nav button.bg-white::after,
+.theme-code nav button[class*="bg-white"]::after,
+.theme-code nav button[class*="bg-primary"]::after,
+.theme-code aside nav a[class*="shadow-lg"]::after,
+.theme-code aside nav button[class*="shadow-lg"]::after {
   content: '';
   position: absolute;
   top: -3px;
@@ -906,16 +1009,16 @@
 }
 
 /* Efecto hover para elementos del menú en modo hacker (no seleccionados) */
-.theme-hacker nav a:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]),
-.theme-hacker nav button:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]) {
+.theme-code nav a:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]),
+.theme-code nav button:hover:not(.bg-white):not([class*="bg-white"]):not([class*="bg-primary"]) {
   box-shadow: 0 0 8px rgba(0, 255, 0, 0.3) !important;
   border: 1px solid rgba(0, 255, 0, 0.5) !important;
   background-color: rgba(0, 255, 0, 0.05) !important;
 }
 
 /* Estilo claro y visible para submenú activo en modo hacker */
-.theme-hacker nav .bg-primary-600,
-.theme-hacker nav a[class*="bg-primary-600"] {
+.theme-code nav .bg-primary-600,
+.theme-code nav a[class*="bg-primary-600"] {
   border: 2px solid #ffffff !important;
   background-color: rgba(0, 255, 0, 0.15) !important;
   color: #00ff00 !important;
@@ -927,8 +1030,8 @@
 }
 
 /* Outline blanco visible para submenú activo */
-.theme-hacker nav .bg-primary-600::after,
-.theme-hacker nav a[class*="bg-primary-600"]::after {
+.theme-code nav .bg-primary-600::after,
+.theme-code nav a[class*="bg-primary-600"]::after {
   content: '';
   position: absolute;
   top: -3px;
@@ -947,13 +1050,43 @@
   background-color: var(--color-surface) !important;
 }
 
-.theme-hacker [class*="bg-gray"]:not([class*="bg-gray-900"]):not([class*="bg-gray-800"]):not([class*="bg-gray-700"]),
-.theme-hacker [class*="bg-slate"]:not([class*="bg-slate-900"]):not([class*="bg-slate-800"]):not([class*="bg-slate-700"]),
-.theme-hacker [class*="bg-zinc"]:not([class*="bg-zinc-900"]):not([class*="bg-zinc-800"]):not([class*="bg-zinc-700"]) {
+.theme-code [class*="bg-gray"]:not([class*="bg-gray-900"]):not([class*="bg-gray-800"]):not([class*="bg-gray-700"]),
+.theme-code [class*="bg-slate"]:not([class*="bg-slate-900"]):not([class*="bg-slate-800"]):not([class*="bg-slate-700"]),
+.theme-code [class*="bg-zinc"]:not([class*="bg-zinc-900"]):not([class*="bg-zinc-800"]):not([class*="bg-zinc-700"]) {
   background-color: #000000 !important;
 }
 
-/* Forzar que TODOS los bg-white y bg-gray-50 sigan el tema */
+/* Forzar que TODOS los bg-white y bg-gray-50 sean blancos en tema Dark */
+.theme-Dark .bg-white,
+.theme-Dark .bg-gray-50,
+.theme-Dark .bg-gray-100,
+.theme-Dark .bg-gray-200,
+.theme-Dark .bg-blue-50,
+.theme-Dark [class*="bg-white"],
+.theme-Dark [style*="background-color: #ffffff"],
+.theme-Dark [style*="background-color: #ffffff"]:not(.hoja-recepcion-modal),
+.theme-Dark [style*="backgroundColor: '#ffffff'"],
+.theme-Dark [style*="backgroundColor: '#ffffff'"]:not(.hoja-recepcion-modal),
+.theme-Dark [style*="backgroundColor: #ffffff"],
+.theme-Dark [style*="backgroundColor: #ffffff"]:not(.hoja-recepcion-modal) {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Asegurar que el texto dentro de elementos con fondo amarillo sea negro */
+.theme-Dark .bg-white *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-gray-50 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-gray-100 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-gray-200 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-blue-50 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark [class*="bg-white"] *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark [style*="background-color: #ffffff"]:not(.hoja-recepcion-modal):not(.hoja-recepcion-modal *) *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark [style*="backgroundColor: '#ffffff'"]:not(.hoja-recepcion-modal):not(.hoja-recepcion-modal *) *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark [style*="backgroundColor: #ffffff"]:not(.hoja-recepcion-modal):not(.hoja-recepcion-modal *) *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]) {
+  color: #000000 !important;
+}
+
+/* Para theme-dark genérico, mantener superficie oscura */
 .theme-dark .bg-white,
 .theme-dark .bg-gray-50,
 .theme-dark .bg-gray-100,
@@ -962,14 +1095,14 @@
 }
 
 /* TODOS los fondos en tema hacker deben ser negros */
-.theme-hacker .bg-white,
-.theme-hacker .bg-gray-50,
-.theme-hacker .bg-gray-100,
-.theme-hacker .bg-gray-200,
-.theme-hacker [class*="bg-gray"],
-.theme-hacker [class*="bg-slate"],
-.theme-hacker [class*="bg-zinc"],
-.theme-hacker [class*="bg-white"] {
+.theme-code .bg-white,
+.theme-code .bg-gray-50,
+.theme-code .bg-gray-100,
+.theme-code .bg-gray-200,
+.theme-code [class*="bg-gray"],
+.theme-code [class*="bg-slate"],
+.theme-code [class*="bg-zinc"],
+.theme-code [class*="bg-white"] {
   background-color: #000000 !important;
 }
 
@@ -979,8 +1112,8 @@
   background-color: #334155 !important;
 }
 
-.theme-hacker .hover\:bg-gray-50:hover,
-.theme-hacker .hover\:bg-gray-100:hover {
+.theme-code .hover\:bg-gray-50:hover,
+.theme-code .hover\:bg-gray-100:hover {
   background-color: #000000 !important;
   box-shadow: 0 0 5px rgba(0, 255, 0, 0.3) !important;
 }
@@ -998,26 +1131,36 @@
 }
 
 /* Forzar que TODOS los bordes sean grises en tema oscuro */
-.theme-dark * {
+.theme-dark *:not(aside.sidebar-gradient):not(aside.sidebar-gradient *) {
   border-color: #4b5563 !important;
 }
 
-.theme-dark .border,
-.theme-dark [class*="border"]:not([class*="border-0"]) {
+/* Excepción: sidebar no debe tener bordes */
+.theme-dark aside.sidebar-gradient,
+.theme-Dark aside.sidebar-gradient {
+  border-color: transparent !important;
+}
+.theme-dark aside.sidebar-gradient *,
+.theme-Dark aside.sidebar-gradient * {
+  border-right-color: transparent !important;
+}
+
+.theme-dark .border:not(aside.sidebar-gradient),
+.theme-dark [class*="border"]:not([class*="border-0"]):not(aside.sidebar-gradient) {
   border-color: #4b5563 !important;
 }
 
 /* TODOS los bordes en tema hacker deben ser verdes */
-.theme-hacker * {
+.theme-code * {
   border-color: #00ff00 !important;
 }
 
-.theme-hacker .border-gray-200,
-.theme-hacker .border-gray-300,
-.theme-hacker .border-gray-400,
-.theme-hacker .border-gray-500,
-.theme-hacker .border,
-.theme-hacker [class*="border"] {
+.theme-code .border-gray-200,
+.theme-code .border-gray-300,
+.theme-code .border-gray-400,
+.theme-code .border-gray-500,
+.theme-code .border,
+.theme-code [class*="border"] {
   border-color: #00ff00 !important;
 }
 
@@ -1030,11 +1173,11 @@
   color: #ffffff !important;
 }
 
-.theme-hacker .text-gray-700,
-.theme-hacker .text-gray-600,
-.theme-hacker .text-gray-500,
-.theme-hacker .text-gray-400,
-.theme-hacker .text-gray-900 {
+.theme-code .text-gray-700,
+.theme-code .text-gray-600,
+.theme-code .text-gray-500,
+.theme-code .text-gray-400,
+.theme-code .text-gray-900 {
   color: #00ff00 !important;
 }
 
@@ -1064,5 +1207,843 @@
   .sidebar-gradient {
     background: var(--color-sidebar);
   }
+
+  /* Hover en filas de tabla - por defecto gris claro */
+  .cotizacion-row:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  /* Forzar color blanco y texto negro en la tabla del editor PDF - SIEMPRE */
+  .theme-dark [class*="bg-white"],
+  .theme-Dark [class*="bg-white"],
+  .theme-code [class*="bg-white"] {
+    /* Permitir bg-white en tablas */
+  }
+  
+  /* Tabla del editor PDF - fondo blanco y texto negro SIEMPRE */
+  div[style*="backgroundColor: '#ffffff'"] *,
+  div[style*="background-color: #ffffff"] * {
+    color: #000000 !important;
+  }
 }
 
+/* Hover amarillo para filas de cotizaciones en modo Dark */
+.theme-Dark .cotizacion-row:hover {
+  background-color: rgba(234, 179, 8, 0.15) !important; /* Amarillo dorado transparente */
+}
+
+/* FORZAR texto negro en la tabla del PDF editor en TODOS los temas */
+.theme-dark div[style*="backgroundColor: '#ffffff"] div,
+.theme-dark div[style*="background-color: #ffffff"] div,
+.theme-Dark div[style*="backgroundColor: '#ffffff"] div,
+.theme-Dark div[style*="background-color: #ffffff"] div,
+.theme-code div[style*="backgroundColor: '#ffffff"] div,
+.theme-code div[style*="background-color: #ffffff"] div {
+  color: #000000 !important;
+}
+
+/* Excepción adicional: elementos dentro de contenedores con bg-white */
+.theme-dark [style*="backgroundColor: '#ffffff !important'"] *,
+.theme-dark [style*="background-color: #ffffff !important"] *,
+.theme-Dark [style*="backgroundColor: '#ffffff !important'"] *,
+.theme-Dark [style*="background-color: #ffffff !important"] *,
+.theme-code [style*="backgroundColor: '#ffffff !important'"] *,
+.theme-code [style*="background-color: #ffffff !important"] * {
+  color: #000000 !important;
+}
+
+/* REGLAS SUPER ESPECÍFICAS para la tabla del PDF */
+.theme-dark .pdf-tabla-blanca,
+.theme-dark .pdf-tabla-blanca *,
+.theme-dark .pdf-tabla-titulo,
+.theme-dark .pdf-tabla-headers,
+.theme-dark .pdf-tabla-col,
+.theme-Dark .pdf-tabla-blanca,
+.theme-Dark .pdf-tabla-blanca *,
+.theme-Dark .pdf-tabla-titulo,
+.theme-Dark .pdf-tabla-headers,
+.theme-Dark .pdf-tabla-col,
+.theme-code .pdf-tabla-blanca,
+.theme-code .pdf-tabla-blanca *,
+.theme-code .pdf-tabla-titulo,
+.theme-code .pdf-tabla-headers,
+.theme-code .pdf-tabla-col {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+/* REGLAS para el elemento de totales */
+.theme-dark .pdf-totales-box,
+.theme-dark .pdf-totales-box *,
+.theme-Dark .pdf-totales-box,
+.theme-Dark .pdf-totales-box *,
+.theme-code .pdf-totales-box,
+.theme-code .pdf-totales-box * {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+/* ASEGURAR que los encabezados de modales sean visibles */
+.theme-dark h2[style*="color: var(--color-text)"],
+.theme-dark h3[style*="color: var(--color-text)"],
+.theme-dark h4[style*="color: var(--color-text)"],
+.theme-Dark h2[style*="color: var(--color-text)"],
+.theme-Dark h3[style*="color: var(--color-text)"],
+.theme-Dark h4[style*="color: var(--color-text)"],
+.theme-code h2[style*="color: var(--color-text)"],
+.theme-code h3[style*="color: var(--color-text)"],
+.theme-code h4[style*="color: var(--color-text)"] {
+  color: var(--color-text) !important;
+  opacity: 1 !important;
+}
+
+/* FORZAR textos visibles en TODOS los elementos que usan variables CSS del tema Dark */
+.theme-Dark *[style*="color: var(--color-text)"]:not(.editor-pdf-modal *) {
+  color: #ffffff !important;
+}
+
+.theme-Dark *[style*="color: var(--color-text-secondary)"]:not(.editor-pdf-modal button) {
+  color: #a3a3a3 !important;
+}
+
+.theme-Dark *[style*="backgroundColor: 'var(--color-surface')"],
+.theme-Dark *[style*="backgroundColor: var(--color-surface)"] {
+  background-color: #1a1a1a !important;
+}
+
+.theme-Dark *[style*="borderColor: 'var(--color-border')"],
+.theme-Dark *[style*="borderColor: var(--color-border)"] {
+  border-color: #2a2a2a !important;
+}
+
+/* FORZAR visibilidad de títulos en modal de plantillas */
+.theme-Dark .modal-title-plantillas,
+.theme-Dark .modal-subtitle-plantillas {
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
+.theme-Dark .modal-plantillas-header {
+  border-color: #ca8a04 !important;
+}
+
+/* Modal de plantillas con fondo amarillo oscuro en tema Dark */
+.theme-Dark .modal-plantillas-container {
+  background-color: #eab308 !important;
+  color: #000000 !important;
+}
+
+/* Asegurar que todo el contenido del modal sea visible con texto negro */
+.theme-Dark .modal-plantillas-container * {
+  color: #000000 !important;
+}
+
+/* Tarjetas de plantillas con fondo amarillo oscuro */
+.theme-Dark .tarjeta-plantilla {
+  background-color: #eab308 !important;
+  border-color: #ca8a04 !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .tarjeta-plantilla:hover {
+  background-color: #eab308 !important;
+  box-shadow: 0 10px 15px -3px rgba(202, 138, 4, 0.3) !important;
+}
+
+/* Mantener colores de botones específicos */
+.theme-Dark .modal-plantillas-container button[class*="bg-green"] {
+  color: #ffffff !important;
+}
+
+.theme-Dark .modal-plantillas-container button[class*="bg-blue"] {
+  color: #ffffff !important;
+}
+
+.theme-Dark .modal-plantillas-container button[class*="bg-red"] {
+  color: #ffffff !important;
+}
+
+.theme-Dark .modal-plantillas-container .text-gray-500,
+.theme-Dark .modal-plantillas-container [style*="color: var(--color-text-secondary)"] {
+  color: #666666 !important;
+}
+
+/* SVG icons en el modal de plantillas */
+.theme-Dark .modal-plantillas-container svg {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+/* Modal de hoja de recepción - Header amarillo oscuro y tabla blanca en modo Dark */
+.theme-Dark {
+  --hoja-recepcion-header-bg: #eab308;
+}
+
+.theme-Dark .hoja-recepcion-modal {
+  background-color: #ffffff !important;
+}
+
+/* Header amarillo oscuro */
+.theme-Dark .hoja-recepcion-modal .bg-white,
+.theme-Dark .hoja-recepcion-modal .bg-gray-100,
+.theme-Dark .hoja-recepcion-modal thead,
+.theme-Dark .hoja-recepcion-modal thead th,
+.theme-Dark .hoja-recepcion-modal .hoja-recepcion-thead,
+.theme-Dark .hoja-recepcion-modal .hoja-recepcion-thead[style] {
+  background-color: #eab308 !important;
+  background: #eab308 !important;
+  color: #000000 !important;
+}
+
+/* Celdas de la tabla con fondo blanco - SELECTORES MÁS ESPECÍFICOS */
+.theme-Dark .hoja-recepcion-modal table tbody,
+.theme-Dark .hoja-recepcion-modal table tbody tr,
+.theme-Dark .hoja-recepcion-modal table tbody tr[class],
+.theme-Dark .hoja-recepcion-modal table tbody td,
+.theme-Dark .hoja-recepcion-modal table tbody td[class],
+.theme-Dark .hoja-recepcion-modal table tbody td[style] {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .hoja-recepcion-modal .hoja-recepcion-responsable,
+.theme-Dark .hoja-recepcion-modal .hoja-recepcion-responsable[style] {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Inputs dentro de las celdas */
+.theme-Dark .hoja-recepcion-modal table tbody input,
+.theme-Dark .hoja-recepcion-modal table tbody input[type="text"],
+.theme-Dark .hoja-recepcion-modal table tbody input[type="number"],
+.theme-Dark .hoja-recepcion-modal table tbody input[style] {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .hoja-recepcion-modal table tbody span,
+.theme-Dark .hoja-recepcion-modal table tbody span[style] {
+  color: #000000 !important;
+}
+
+/* Hover states */
+.theme-Dark .hoja-recepcion-modal table tbody tr:hover,
+.theme-Dark .hoja-recepcion-modal table tbody tr.hover\:bg-gray-50:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.theme-Dark .hoja-recepcion-modal table tbody input:focus,
+.theme-Dark .hoja-recepcion-modal table tbody input:focus-visible,
+.theme-Dark .hoja-recepcion-modal table tbody input.focus\:bg-blue-50:focus {
+  background-color: #dbeafe !important;
+}
+
+.theme-Dark .hoja-recepcion-modal button:hover[class*="hover:bg-gray-100"] {
+  background-color: #f3f4f6 !important;
+}
+
+/* Mantener texto negro en header */
+.theme-Dark .hoja-recepcion-modal thead,
+.theme-Dark .hoja-recepcion-modal thead th,
+.theme-Dark .hoja-recepcion-modal thead * {
+  color: #000000 !important;
+}
+
+.theme-Dark .hoja-recepcion-modal button[class*="bg-blue"],
+.theme-Dark .hoja-recepcion-modal button[class*="bg-green"] {
+  color: #ffffff !important;
+}
+
+/* Sobrescribir cualquier estilo que use var(--color-text) en tbody */
+.theme-Dark .hoja-recepcion-modal table tbody [style*="color: var(--color-text)"],
+.theme-Dark .hoja-recepcion-modal table tbody [style*="color:var(--color-text)"] {
+  color: #000000 !important;
+}
+
+/* Estilos específicos para tema Dark - Botones visibles con amarillo dorado */
+.theme-Dark .btn-primary,
+.theme-Dark button[class*="bg-primary"],
+.theme-Dark [class*="bg-primary-600"] {
+  background-color: var(--color-primary-600) !important;
+  color: #000000 !important;
+  border-color: var(--color-primary-600) !important;
+  font-weight: 600 !important;
+}
+
+.theme-Dark .btn-primary:hover,
+.theme-Dark button[class*="bg-primary"]:hover,
+.theme-Dark [class*="bg-primary-600"]:hover {
+  background-color: var(--color-primary-500) !important;
+  color: #000000 !important;
+  opacity: 0.9 !important;
+}
+
+.theme-Dark .btn-secondary:not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn),
+.theme-Dark button:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn) {
+  background-color: #1a1a1a !important;
+  border-color: #2a2a2a !important;
+  color: #ffffff !important;
+}
+
+.theme-Dark .btn-secondary:hover:not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn),
+.theme-Dark button:not([class*="bg-primary"]):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]):hover:not(.editor-zoom-btn):not(.editor-plantillas-btn):not(.editor-close-btn) {
+  background-color: #2a2a2a !important;
+  border-color: #3a3a3a !important;
+  color: #ffffff !important;
+}
+
+/* Asegurar que los botones con texto blanco sean visibles en tema Dark */
+.theme-Dark button {
+  color: var(--color-text) !important;
+}
+
+.theme-Dark button[class*="text-white"],
+.theme-Dark .btn-primary[class*="text-white"] {
+  color: #000000 !important;
+}
+
+/* Botones de acción específicos en tema Dark */
+.theme-Dark button[class*="bg-green"],
+.theme-Dark button[class*="bg-blue"],
+.theme-Dark button[class*="bg-red"],
+.theme-Dark button[class*="bg-yellow"] {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Inputs y selects visibles en tema Dark - Si tienen fondo blanco, cambiarlos a amarillo oscuro */
+.theme-Dark input:not(.hoja-recepcion-modal input):not(.hoja-recepcion-modal table input):not(.hoja-recepcion-modal table tbody input)[class*="bg-white"],
+.theme-Dark input:not(.hoja-recepcion-modal input):not(.hoja-recepcion-modal table input):not(.hoja-recepcion-modal table tbody input).bg-white,
+.theme-Dark select:not(.hoja-recepcion-modal select):not(.hoja-recepcion-modal table select):not(.hoja-recepcion-modal table tbody select)[class*="bg-white"],
+.theme-Dark select:not(.hoja-recepcion-modal select):not(.hoja-recepcion-modal table select):not(.hoja-recepcion-modal table tbody select).bg-white,
+.theme-Dark textarea:not(.hoja-recepcion-modal textarea):not(.hoja-recepcion-modal table textarea):not(.hoja-recepcion-modal table tbody textarea)[class*="bg-white"],
+.theme-Dark textarea:not(.hoja-recepcion-modal textarea):not(.hoja-recepcion-modal table textarea):not(.hoja-recepcion-modal table tbody textarea).bg-white {
+  background-color: #eab308 !important;
+  border-color: var(--color-border) !important;
+  color: #000000 !important;
+}
+
+/* Inputs y selects normales en tema Dark (sin fondo blanco) */
+.theme-Dark input:not(.hoja-recepcion-modal input):not(.hoja-recepcion-modal table input):not(.hoja-recepcion-modal table tbody input):not([class*="bg-white"]):not(.bg-white),
+.theme-Dark select:not(.hoja-recepcion-modal select):not(.hoja-recepcion-modal table select):not(.hoja-recepcion-modal table tbody select):not([class*="bg-white"]):not(.bg-white),
+.theme-Dark textarea:not(.hoja-recepcion-modal textarea):not(.hoja-recepcion-modal table textarea):not(.hoja-recepcion-modal table tbody textarea):not([class*="bg-white"]):not(.bg-white) {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+.theme-Dark input:focus,
+.theme-Dark select:focus,
+.theme-Dark textarea:focus {
+  border-color: var(--color-primary-600) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2) !important;
+}
+
+/* Cards y contenedores visibles */
+.theme-Dark .card {
+  background-color: var(--color-card) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+/* Si la card tiene fondo blanco o usa var(--color-surface) que sea blanco, cambiarlo a amarillo oscuro */
+.theme-Dark .card[class*="bg-white"],
+.theme-Dark .card.bg-white,
+.theme-Dark div[style*="backgroundColor: var(--color-surface)"]:not([style*="background-color: #1a1a1a"]) {
+  background-color: #eab308 !important;
+  color: #000000 !important;
+}
+
+.theme-Dark div[style*="backgroundColor: var(--color-surface)"]:not([style*="background-color: #1a1a1a"]) *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]) {
+  color: #000000 !important;
+}
+
+/* Enlaces visibles en tema Dark */
+.theme-Dark a {
+  color: var(--color-primary-500) !important;
+}
+
+.theme-Dark a:hover {
+  color: var(--color-primary-400) !important;
+}
+
+/* Asegurar que los porcentajes y números sean visibles en tema Dark */
+.theme-Dark span[style*="color: var(--color-text)"],
+.theme-Dark span[style*="--color-text"] {
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+}
+
+.theme-Dark .text-center {
+  color: var(--color-text) !important;
+}
+
+/* Contenedores con fondo blanco en tema Dark deben ser blancos */
+.theme-Dark .bg-white,
+.theme-Dark [class*="bg-white"],
+.theme-Dark .bg-gray-50,
+.theme-Dark .bg-gray-100,
+.theme-Dark .bg-gray-200,
+.theme-Dark .bg-blue-50 {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Texto dentro de elementos con fondo amarillo debe ser negro */
+.theme-Dark .bg-white *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark [class*="bg-white"] *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-gray-50 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-gray-100 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]),
+.theme-Dark .bg-gray-200 *:not([class*="text-white"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-red"]):not([class*="text-yellow"]) {
+  color: #000000 !important;
+}
+
+/* EXCEPCIÓN: El canvas del documento siempre debe ser blanco, sin importar el tema */
+.theme-Dark .canvas-documento,
+.theme-Dark .bg-white.shadow-xl.border-2,
+.theme-Dark .bg-white.shadow-2xl,
+.theme-Dark div[class*="bg-white"][class*="shadow-xl"],
+.theme-Dark div[class*="bg-white"][class*="shadow-2xl"] {
+  background-color: #ffffff !important;
+}
+
+/* EXCEPCIÓN: Solo los fondos que usan var(--color-surface) dentro del editor PDF deben ser blancos en modo dark */
+.theme-Dark .editor-pdf-modal [style*="backgroundColor: var(--color-surface)"],
+.theme-Dark .editor-pdf-modal [style*="backgroundColor:var(--color-surface)"],
+.theme-Dark .editor-pdf-modal [style*="background-color: var(--color-surface)"],
+.theme-Dark .editor-pdf-modal [style*="background-color:var(--color-surface)"] {
+  background-color: #ffffff !important;
+}
+
+/* Fondo del contenedor del canvas también debe ser blanco */
+.theme-Dark .editor-pdf-modal [style*="backgroundColor: '#f5f5f5'"],
+.theme-Dark .editor-pdf-modal [style*="backgroundColor: #f5f5f5"],
+.theme-Dark .editor-pdf-modal [style*="background-color: '#f5f5f5'"],
+.theme-Dark .editor-pdf-modal [style*="background-color: #f5f5f5"] {
+  background-color: #ffffff !important;
+}
+
+/* Ajustar textos dentro del editor PDF para que sean negros sobre fondo blanco */
+.theme-Dark .editor-pdf-modal [style*="color: var(--color-text)"],
+.theme-Dark .editor-pdf-modal [style*="color:var(--color-text)"] {
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal [style*="color: var(--color-text-secondary)"],
+.theme-Dark .editor-pdf-modal [style*="color:var(--color-text-secondary)"] {
+  color: #6b7280 !important;
+}
+
+/* Botones de herramientas del editor PDF deben tener fondo blanco */
+.theme-Dark .editor-pdf-modal button.border.rounded-lg:not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-yellow"]),
+.theme-Dark .editor-pdf-modal button[class*="hover:bg-gray-100"],
+.theme-Dark .editor-pdf-modal button.border:not([class*="bg-blue"]):not([class*="bg-purple"]):not([class*="bg-green"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #d1d5db !important;
+}
+
+/* Botones de zoom (+, -, Reset) deben ser blancos - REGLAS MUY ESPECÍFICAS */
+.theme-Dark .editor-pdf-modal button[title="Alejar (Zoom Out)"],
+.theme-Dark .editor-pdf-modal button[title="Acercar (Zoom In)"],
+.theme-Dark .editor-pdf-modal button[title="Resetear zoom a 100%"],
+.theme-dark .editor-pdf-modal button[title="Alejar (Zoom Out)"],
+.theme-dark .editor-pdf-modal button[title="Acercar (Zoom In)"],
+.theme-dark .editor-pdf-modal button[title="Resetear zoom a 100%"] {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: #d1d5db !important;
+}
+
+.theme-Dark .editor-pdf-modal button[title="Alejar (Zoom Out)"] svg,
+.theme-Dark .editor-pdf-modal button[title="Acercar (Zoom In)"] svg,
+.theme-Dark .editor-pdf-modal button[title="Resetear zoom a 100%"] svg,
+.theme-dark .editor-pdf-modal button[title="Alejar (Zoom Out)"] svg,
+.theme-dark .editor-pdf-modal button[title="Acercar (Zoom In)"] svg,
+.theme-dark .editor-pdf-modal button[title="Resetear zoom a 100%"] svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button[title="Resetear zoom a 100%"],
+.theme-dark .editor-pdf-modal button[title="Resetear zoom a 100%"] {
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button[title="Alejar (Zoom Out)"]:hover,
+.theme-Dark .editor-pdf-modal button[title="Acercar (Zoom In)"]:hover,
+.theme-Dark .editor-pdf-modal button[title="Resetear zoom a 100%"]:hover,
+.theme-dark .editor-pdf-modal button[title="Alejar (Zoom Out)"]:hover,
+.theme-dark .editor-pdf-modal button[title="Acercar (Zoom In)"]:hover,
+.theme-dark .editor-pdf-modal button[title="Resetear zoom a 100%"]:hover {
+  background-color: #f3f4f6 !important;
+  background: #f3f4f6 !important;
+  color: #000000 !important;
+}
+
+/* Botón de Plantillas debe ser morado - REGLAS MUY ESPECÍFICAS */
+.theme-Dark .editor-pdf-modal button[title="Gestionar plantillas"],
+.theme-Dark .editor-pdf-modal button.bg-purple-600,
+.theme-Dark .editor-pdf-modal button[class*="bg-purple-600"],
+.theme-dark .editor-pdf-modal button[title="Gestionar plantillas"],
+.theme-dark .editor-pdf-modal button.bg-purple-600,
+.theme-dark .editor-pdf-modal button[class*="bg-purple-600"] {
+  background-color: #9333ea !important;
+  background: #9333ea !important;
+  color: #ffffff !important;
+  border-color: #9333ea !important;
+}
+
+.theme-Dark .editor-pdf-modal button[title="Gestionar plantillas"]:hover,
+.theme-Dark .editor-pdf-modal button.bg-purple-600:hover,
+.theme-Dark .editor-pdf-modal button[class*="bg-purple-600"]:hover,
+.theme-dark .editor-pdf-modal button[title="Gestionar plantillas"]:hover,
+.theme-dark .editor-pdf-modal button.bg-purple-600:hover,
+.theme-dark .editor-pdf-modal button[class*="bg-purple-600"]:hover {
+  background-color: #7e22ce !important;
+  background: #7e22ce !important;
+  color: #ffffff !important;
+  border-color: #7e22ce !important;
+}
+
+.theme-Dark .editor-pdf-modal button[title="Gestionar plantillas"] svg,
+.theme-Dark .editor-pdf-modal button.bg-purple-600 svg,
+.theme-Dark .editor-pdf-modal button[class*="bg-purple-600"] svg,
+.theme-dark .editor-pdf-modal button[title="Gestionar plantillas"] svg,
+.theme-dark .editor-pdf-modal button.bg-purple-600 svg,
+.theme-dark .editor-pdf-modal button[class*="bg-purple-600"] svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.theme-Dark .editor-pdf-modal button[title="Gestionar plantillas"] span,
+.theme-Dark .editor-pdf-modal button.bg-purple-600 span,
+.theme-dark .editor-pdf-modal button[title="Gestionar plantillas"] span,
+.theme-dark .editor-pdf-modal button.bg-purple-600 span {
+  color: #ffffff !important;
+}
+
+/* Botón de cerrar (X) debe ser blanco - REGLAS MUY ESPECÍFICAS */
+.theme-Dark .editor-pdf-modal button.rounded-full[style*="color: var(--color-text-secondary)"],
+.theme-Dark .editor-pdf-modal button.text-gray-500.rounded-full,
+.theme-dark .editor-pdf-modal button.rounded-full[style*="color: var(--color-text-secondary)"],
+.theme-dark .editor-pdf-modal button.text-gray-500.rounded-full {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button.rounded-full[style*="color: var(--color-text-secondary)"]:hover,
+.theme-Dark .editor-pdf-modal button.text-gray-500.rounded-full:hover,
+.theme-dark .editor-pdf-modal button.rounded-full[style*="color: var(--color-text-secondary)"]:hover,
+.theme-dark .editor-pdf-modal button.text-gray-500.rounded-full:hover {
+  background-color: #f3f4f6 !important;
+  background: #f3f4f6 !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button.rounded-full[style*="color: var(--color-text-secondary)"] svg,
+.theme-Dark .editor-pdf-modal button.text-gray-500.rounded-full svg,
+.theme-dark .editor-pdf-modal button.rounded-full[style*="color: var(--color-text-secondary)"] svg,
+.theme-dark .editor-pdf-modal button.text-gray-500.rounded-full svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: #000000 !important;
+}
+
+/* Fondo blanco para el contenedor principal del editor PDF */
+.theme-Dark div.flex.flex-col[style*="backgroundColor: var(--color-surface)"]:has(.canvas-documento) {
+  background-color: #ffffff !important;
+}
+
+/* Asegurar que el canvas del editor siempre sea blanco - selector más específico */
+.theme-Dark div[ref*="canvasRef"],
+.theme-Dark div.bg-white.shadow-xl,
+.theme-Dark div.bg-white.shadow-2xl {
+  background-color: #ffffff !important;
+}
+
+/* Asegurar que el canvas del editor siempre sea blanco en todos los temas */
+.canvas-documento,
+div.bg-white.shadow-xl.border-2,
+div.bg-white.shadow-2xl {
+  background-color: #ffffff !important;
+}
+
+/* Asegurar que el header del editor sea visible en tema Dark */
+.theme-Dark h2[style*="color: var(--color-text)"],
+.theme-Dark h2[style*="--color-text"],
+.theme-Dark .text-base,
+.theme-Dark .text-2xl {
+  color: var(--color-text) !important;
+}
+
+/* Asegurar que todos los textos del modal del editor sean visibles */
+.theme-Dark div[style*="backgroundColor: 'var(--color-surface)'"] h2,
+.theme-Dark div[style*="backgroundColor: 'var(--color-surface)'"] p,
+.theme-Dark div[style*="backgroundColor: 'var(--color-surface)'"] span,
+.theme-Dark div[style*="backgroundColor: 'var(--color-surface)'"] button {
+  color: var(--color-text) !important;
+}
+
+/* Asegurar que los labels y textos en la sección de información de cotización sean visibles */
+.theme-Dark label.text-gray-700,
+.theme-Dark h3.text-gray-900,
+.theme-Dark .text-gray-700,
+.theme-Dark .text-gray-900 {
+  color: var(--color-text) !important;
+}
+
+/* Asegurar que los valores numéricos en reportes sean visibles en tema Dark */
+.theme-Dark .text-primary-700,
+.theme-Dark .text-secondary-700,
+.theme-Dark .text-accent-700,
+.theme-Dark p[style*="color: var(--color-primary-600)"],
+.theme-Dark p[style*="color: var(--color-secondary-600)"],
+.theme-Dark p[style*="color: var(--color-accent-600)"] {
+  color: var(--color-primary-500) !important;
+}
+
+/* Valores numéricos grandes siempre visibles */
+.theme-Dark .text-2xl.font-bold {
+  color: var(--color-text) !important;
+}
+
+/* Estilos específicos para tema Salvia - Verde natural y elegante */
+.theme-sage .btn-primary,
+.theme-sage button[class*="bg-primary"],
+.theme-sage [class*="bg-primary-600"] {
+  background-color: var(--color-primary-600) !important;
+  color: #ffffff !important;
+  border-color: var(--color-primary-600) !important;
+  font-weight: 600 !important;
+}
+
+.theme-sage .btn-primary:hover,
+.theme-sage button[class*="bg-primary"]:hover,
+.theme-sage [class*="bg-primary-600"]:hover {
+  background-color: var(--color-primary-500) !important;
+  color: #ffffff !important;
+  opacity: 0.9 !important;
+}
+
+/* Inputs y selects en tema Salvia */
+.theme-sage input,
+.theme-sage select,
+.theme-sage textarea {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+.theme-sage input:focus,
+.theme-sage select:focus,
+.theme-sage textarea:focus {
+  border-color: var(--color-primary-500) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(90, 122, 95, 0.2) !important;
+}
+
+/* Cards y contenedores */
+.theme-sage .card {
+  background-color: var(--color-card) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+/* Enlaces en tema Salvia */
+.theme-sage a {
+  color: var(--color-primary-600) !important;
+}
+
+.theme-sage a:hover {
+  color: var(--color-primary-500) !important;
+}
+
+/* ========================================
+   REGLAS ESPECÍFICAS PARA BOTONES DEL EDITOR PDF EN MODO DARK
+   Estas reglas deben tener máxima prioridad y estar al final
+   ======================================== */
+
+/* Botones de zoom (+, -, Reset) - FORZAR BLANCO - MÁXIMA PRIORIDAD */
+.theme-Dark .editor-pdf-modal button.editor-zoom-btn,
+.theme-dark .editor-pdf-modal button.editor-zoom-btn,
+.theme-Dark button.editor-zoom-btn.editor-zoom-btn,
+.theme-dark button.editor-zoom-btn.editor-zoom-btn {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: #d1d5db !important;
+}
+
+.theme-Dark .editor-pdf-modal button.editor-zoom-btn:hover,
+.theme-dark .editor-pdf-modal button.editor-zoom-btn:hover,
+.theme-Dark button.editor-zoom-btn.editor-zoom-btn:hover,
+.theme-dark button.editor-zoom-btn.editor-zoom-btn:hover {
+  background-color: #f3f4f6 !important;
+  background: #f3f4f6 !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button.editor-zoom-btn svg,
+.theme-dark .editor-pdf-modal button.editor-zoom-btn svg,
+.theme-Dark button.editor-zoom-btn.editor-zoom-btn svg,
+.theme-dark button.editor-zoom-btn.editor-zoom-btn svg,
+.theme-Dark .editor-pdf-modal button.editor-zoom-btn path,
+.theme-dark .editor-pdf-modal button.editor-zoom-btn path,
+.theme-Dark button.editor-zoom-btn.editor-zoom-btn path,
+.theme-dark button.editor-zoom-btn.editor-zoom-btn path {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: #ffffff !important;
+}
+
+/* Botón de Plantillas - FORZAR MORADO - MÁXIMA PRIORIDAD */
+.theme-Dark .editor-pdf-modal button.editor-plantillas-btn,
+.theme-dark .editor-pdf-modal button.editor-plantillas-btn,
+.theme-Dark button.editor-plantillas-btn.editor-plantillas-btn,
+.theme-dark button.editor-plantillas-btn.editor-plantillas-btn {
+  background-color: #9333ea !important;
+  background: #9333ea !important;
+  color: #ffffff !important;
+  border-color: #9333ea !important;
+}
+
+.theme-Dark .editor-pdf-modal button.editor-plantillas-btn:hover,
+.theme-dark .editor-pdf-modal button.editor-plantillas-btn:hover,
+.theme-Dark button.editor-plantillas-btn.editor-plantillas-btn:hover,
+.theme-dark button.editor-plantillas-btn.editor-plantillas-btn:hover {
+  background-color: #7e22ce !important;
+  background: #7e22ce !important;
+  color: #ffffff !important;
+}
+
+.theme-Dark .editor-pdf-modal button.editor-plantillas-btn svg,
+.theme-dark .editor-pdf-modal button.editor-plantillas-btn svg,
+.theme-Dark button.editor-plantillas-btn.editor-plantillas-btn svg,
+.theme-dark button.editor-plantillas-btn.editor-plantillas-btn svg,
+.theme-Dark .editor-pdf-modal button.editor-plantillas-btn span,
+.theme-dark .editor-pdf-modal button.editor-plantillas-btn span,
+.theme-Dark button.editor-plantillas-btn.editor-plantillas-btn span,
+.theme-dark button.editor-plantillas-btn.editor-plantillas-btn span,
+.theme-Dark .editor-pdf-modal button.editor-plantillas-btn path,
+.theme-dark .editor-pdf-modal button.editor-plantillas-btn path,
+.theme-Dark button.editor-plantillas-btn.editor-plantillas-btn path,
+.theme-dark button.editor-plantillas-btn.editor-plantillas-btn path {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Botón de cerrar (X) - FORZAR BLANCO - MÁXIMA PRIORIDAD */
+.theme-Dark .editor-pdf-modal button.editor-close-btn,
+.theme-dark .editor-pdf-modal button.editor-close-btn,
+.theme-Dark button.editor-close-btn.editor-close-btn,
+.theme-dark button.editor-close-btn.editor-close-btn {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button.editor-close-btn:hover,
+.theme-dark .editor-pdf-modal button.editor-close-btn:hover,
+.theme-Dark button.editor-close-btn.editor-close-btn:hover,
+.theme-dark button.editor-close-btn.editor-close-btn:hover {
+  background-color: #f3f4f6 !important;
+  background: #f3f4f6 !important;
+  color: #000000 !important;
+}
+
+.theme-Dark .editor-pdf-modal button.editor-close-btn svg,
+.theme-dark .editor-pdf-modal button.editor-close-btn svg,
+.theme-Dark button.editor-close-btn.editor-close-btn svg,
+.theme-dark button.editor-close-btn.editor-close-btn svg,
+.theme-Dark .editor-pdf-modal button.editor-close-btn path,
+.theme-dark .editor-pdf-modal button.editor-close-btn path,
+.theme-Dark button.editor-close-btn.editor-close-btn path,
+.theme-dark button.editor-close-btn.editor-close-btn path {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: #000000 !important;
+}
+
+/* ========================================
+   REGLAS ESPECÍFICAS PARA QUITAR BORDE DEL SIDEBAR
+   Máxima prioridad - debe estar al final
+   ======================================== */
+aside.sidebar-gradient,
+.theme-dark aside.sidebar-gradient,
+.theme-Dark aside.sidebar-gradient {
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  border-right: 0 !important;
+  border-left: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Quitar cualquier borde en el lado derecho del sidebar */
+aside.sidebar-gradient::after,
+.theme-dark aside.sidebar-gradient::after,
+.theme-Dark aside.sidebar-gradient::after,
+aside.sidebar-gradient::before,
+.theme-dark aside.sidebar-gradient::before,
+.theme-Dark aside.sidebar-gradient::before {
+  display: none !important;
+  content: none !important;
+  border: none !important;
+}
+
+/* Quitar bordes de cualquier elemento dentro del sidebar */
+.theme-dark aside.sidebar-gradient > *,
+.theme-Dark aside.sidebar-gradient > * {
+  border-right: none !important;
+}
+
+/* Quitar borde del contenedor padre que contiene el sidebar */
+.theme-dark .flex.h-screen:has(aside.sidebar-gradient),
+.theme-Dark .flex.h-screen:has(aside.sidebar-gradient) {
+  border: none !important;
+}
+
+/* Quitar cualquier separador visual entre sidebar y contenido */
+.theme-dark aside.sidebar-gradient + *,
+.theme-Dark aside.sidebar-gradient + * {
+  border-left: none !important;
+}
+
+/* Quitar borde del div flex-1 que está después del sidebar */
+.theme-dark .flex-1.flex.flex-col,
+.theme-Dark .flex-1.flex.flex-col {
+  border-left: none !important;
+  border: none !important;
+}
+
+/* Quitar cualquier borde blanco que pueda aparecer */
+.theme-dark aside.sidebar-gradient,
+.theme-Dark aside.sidebar-gradient,
+aside.sidebar-gradient {
+  border-right-color: transparent !important;
+  border-right-width: 0 !important;
+  border-right-style: none !important;
+}
+
+/* Regla general para quitar cualquier borde blanco en modo dark */
+.theme-dark *[style*="border"]:has(aside.sidebar-gradient),
+.theme-Dark *[style*="border"]:has(aside.sidebar-gradient),
+.theme-dark aside.sidebar-gradient[style*="border"],
+.theme-Dark aside.sidebar-gradient[style*="border"] {
+  border-color: transparent !important;
+  border-right-color: transparent !important;
+}
