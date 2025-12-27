@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { createOrUpdateCompany, getCompany, getAllCompanies } from './firebaseUtils'
+import { getUsersCollection, getUserDoc, getRolesCollection, getRoleDoc, getCurrentCompanyId } from './firebasePaths'
 
 const functions = getFunctions(app)
 
@@ -56,15 +57,18 @@ export const getUserClaims = async (userId = null) => {
 
 /**
  * Crear un nuevo usuario y asignarle una empresa
- * @param {object} userData - Datos del usuario { email, password, companyId, isAdmin }
+ * @param {object} userData - Datos del usuario { email, password, companyId, role, isAdmin, displayName }
+ * 
+ * NOTA: La creación real del usuario en Firebase Auth debe hacerse desde:
+ * 1. Una Cloud Function con Firebase Admin SDK, o
+ * 2. Manualmente desde Firebase Console
+ * 
+ * Esta función crea el documento en Firestore. Cuando el usuario se cree en Firebase Auth,
+ * se debe actualizar el documento con el UID correspondiente.
  */
 export const createUserWithCompany = async (userData) => {
   try {
-    // Nota: La creación de usuarios debe hacerse desde el backend
-    // Por ahora, esta función solo actualiza el documento en Firestore
-    // La creación real del usuario debe hacerse desde Firebase Admin SDK
-    
-    const { email, companyId, isAdmin, displayName } = userData
+    const { email, password, companyId, role, isAdmin, displayName, activo } = userData
     
     // Verificar que la empresa existe
     const company = await getCompany(companyId)
@@ -72,17 +76,44 @@ export const createUserWithCompany = async (userData) => {
       throw new Error(`La empresa ${companyId} no existe`)
     }
     
+    // Intentar crear usuario usando Cloud Function si está disponible
+    let userId = null
+    try {
+      const createUserFn = httpsCallable(functions, 'createUser')
+      const result = await createUserFn({
+        email,
+        password,
+        companyId,
+        role: role || 'operativo',
+        isAdmin: isAdmin || false,
+        displayName: displayName || ''
+      })
+      
+      if (result.data && result.data.uid) {
+        userId = result.data.uid
+        
+        // Asignar custom claims
+        if (userId) {
+          await setUserClaims(userId, companyId, isAdmin || false)
+        }
+      }
+    } catch (cloudFunctionError) {
+      // Si no hay Cloud Function disponible, continuar solo con Firestore
+      console.warn('Cloud Function no disponible. Se creará solo el documento en Firestore.')
+      console.warn('El usuario debe crearse manualmente en Firebase Auth y luego actualizar este documento con el UID.')
+    }
+    
     // Crear documento de usuario en Firestore
-    // El userId se asignará cuando se cree el usuario en Firebase Auth
-    const usersRef = collection(db, 'users')
-    const newUserRef = doc(usersRef)
+    // Ahora usa: companies/{companyId}/users/{userId}
+    const usersRef = getUsersCollection(companyId)
+    const newUserRef = userId ? getUserDoc(userId, companyId) : doc(usersRef)
     
     await setDoc(newUserRef, {
+      ...(userId && { uid: userId, userId: userId }),
+      name: displayName || email.split('@')[0],
       email,
-      companyId,
-      admin: isAdmin || false,
-      displayName: displayName || '',
-      activo: true,
+      roleId: role || 'operativo',
+      active: activo !== undefined ? activo : true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     })
@@ -91,7 +122,9 @@ export const createUserWithCompany = async (userData) => {
       id: newUserRef.id,
       email,
       companyId,
-      admin: isAdmin || false
+      role: role || 'operativo',
+      admin: isAdmin || false,
+      uid: userId
     }
   } catch (error) {
     console.error('Error al crear usuario:', error)
@@ -104,23 +137,29 @@ export const createUserWithCompany = async (userData) => {
  */
 export const updateUser = async (userId, userData) => {
   try {
-    const { companyId, isAdmin, displayName, activo } = userData
+    const { companyId, role, isAdmin, displayName, activo } = userData
     
     // Actualizar custom claims si se proporciona companyId o isAdmin
     if (companyId !== undefined || isAdmin !== undefined) {
-      await setUserClaims(userId, companyId, isAdmin)
+      const uid = userData.uid || userId
+      try {
+        await setUserClaims(uid, companyId, isAdmin)
+      } catch (claimsError) {
+        console.warn('No se pudieron actualizar los custom claims:', claimsError)
+      }
     }
     
     // Actualizar documento en Firestore
-    const userRef = doc(db, 'users', userId)
+    // Necesitamos obtener el companyId del usuario actual si no se proporciona
+    const currentCompanyId = companyId || getCurrentCompanyId()
+    const userRef = getUserDoc(userId, currentCompanyId)
     const updateData = {
       updatedAt: serverTimestamp()
     }
     
-    if (companyId !== undefined) updateData.companyId = companyId
-    if (isAdmin !== undefined) updateData.admin = isAdmin
-    if (displayName !== undefined) updateData.displayName = displayName
-    if (activo !== undefined) updateData.activo = activo
+    if (role !== undefined) updateData.roleId = role
+    if (displayName !== undefined) updateData.name = displayName
+    if (activo !== undefined) updateData.active = activo
     
     await updateDoc(userRef, updateData)
     
@@ -133,18 +172,25 @@ export const updateUser = async (userId, userData) => {
 
 /**
  * Obtener todos los usuarios de una empresa
+ * Ahora usa: companies/{companyId}/users
  */
 export const getUsersByCompany = async (companyId) => {
   try {
-    const usersRef = collection(db, 'users')
-    const q = query(usersRef, where('companyId', '==', companyId))
-    const querySnapshot = await getDocs(q)
+    const usersRef = getUsersCollection(companyId)
+    const querySnapshot = await getDocs(usersRef)
     
     const users = []
     querySnapshot.forEach((doc) => {
+      const data = doc.data()
       users.push({
         id: doc.id,
-        ...doc.data()
+        userId: doc.id,
+        email: data.email,
+        name: data.name,
+        roleId: data.roleId,
+        active: data.active,
+        companyId: companyId, // Agregar para compatibilidad
+        ...data
       })
     })
     
@@ -157,23 +203,45 @@ export const getUsersByCompany = async (companyId) => {
 
 /**
  * Obtener todos los usuarios (solo para administradores)
+ * Nota: Con la nueva estructura, esto requiere iterar sobre todas las empresas
+ * Por ahora, retorna usuarios de la empresa actual
  */
 export const getAllUsers = async () => {
   try {
-    const usersRef = collection(db, 'users')
+    console.log('getAllUsers: Iniciando consulta a Firestore...')
+    const companyId = getCurrentCompanyId()
+    const usersRef = getUsersCollection(companyId)
+    console.log('getAllUsers: Referencia a colección obtenida')
+    
     const querySnapshot = await getDocs(usersRef)
+    console.log('getAllUsers: QuerySnapshot obtenido, cantidad:', querySnapshot.size)
     
     const users = []
     querySnapshot.forEach((doc) => {
+      const userData = doc.data()
+      console.log('getAllUsers: Procesando usuario:', doc.id, userData)
       users.push({
         id: doc.id,
-        ...doc.data()
+        userId: doc.id,
+        companyId: companyId,
+        ...userData
       })
     })
     
+    console.log('getAllUsers: Total de usuarios encontrados:', users.length)
     return users
   } catch (error) {
     console.error('Error al obtener usuarios:', error)
+    console.error('Detalles del error:', {
+      code: error.code,
+      message: error.message,
+      name: error.name
+    })
+    // Si hay error de permisos o conexión, retornar array vacío en lugar de lanzar error
+    if (error.code === 'permission-denied' || error.code === 'unavailable') {
+      console.warn('Error de permisos o conexión, retornando array vacío')
+      return []
+    }
     throw error
   }
 }

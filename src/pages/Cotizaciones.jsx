@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { FileText, Plus, Search, CheckCircle, XCircle, Clock, Edit, Save, RotateCcw, X, ShoppingCart, GripVertical, ChevronLeft, ChevronRight, UserPlus, Trash2, Download, Send, Layout, Type, Image, Table, Move, Trash, Eye, ZoomIn, ZoomOut, Ruler, DollarSign, Copy } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
@@ -2172,11 +2172,9 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
   const [mostrarPlantillas, setMostrarPlantillas] = useState(false)
   const canvasRef = useRef(null)
   const canvasContainerRef = useRef(null)
-  const pinchStartZoomRef = useRef(100)
   const [reorganizadoInicialmente, setReorganizadoInicialmente] = useState(false)
   const [zoom, setZoom] = useState(100) // Zoom inicial al 100%
   const [mostrarRegla, setMostrarRegla] = useState(true) // Mostrar regla por defecto
-  const [pinchStartDistance, setPinchStartDistance] = useState(null)
   
   // Limpiar localStorage al montar para asegurar hoja en blanco
   useEffect(() => {
@@ -2200,24 +2198,221 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     colorSecundario: '#6b7280'
   }
   
-  // Cargar plantillas guardadas
+  // Plantilla DEMO por defecto - siempre debe existir
+  const getPlantillaDEMODefault = () => {
+    return {
+      nombre: 'DEMO',
+      elementos: [
+        {
+          id: 'titulo',
+          tipo: 'header',
+          texto: 'COTIZACIÓN - NOTA DE VENTA',
+          x: 105,
+          y: 15,
+          width: 180,
+          height: 10,
+          fontSize: 20,
+          fontWeight: 'bold',
+          align: 'center',
+          color: '#ffffff',
+          backgroundColor: '#f97316',
+          visible: true
+        },
+        {
+          id: 'subtitulo',
+          tipo: 'texto',
+          texto: 'Qubit - Sistema de Gestión',
+          x: 105,
+          y: 25,
+          width: 180,
+          height: 5,
+          fontSize: 12,
+          fontWeight: 'normal',
+          align: 'center',
+          color: '#6b7280',
+          visible: true
+        },
+        {
+          id: 'info_cliente',
+          tipo: 'texto',
+          texto: 'INFORMACIÓN DE LA COTIZACIÓN\nCliente: {cliente}\nFecha: {fecha}\nVencimiento: {fechaVencimiento}\nVendedor: {vendedor}\nEstado: {estado}',
+          x: 15,
+          y: 50,
+          width: 180,
+          height: 30,
+          fontSize: 10,
+          fontWeight: 'normal',
+          align: 'left',
+          color: '#000000',
+          visible: true
+        },
+        {
+          id: 'tabla_productos',
+          tipo: 'tabla',
+          x: 15,
+          y: 90,
+          width: 180,
+          height: 100,
+          headers: [
+            { texto: 'Producto', color: '#000000' },
+            { texto: 'Cant.', color: '#000000' },
+            { texto: 'Pres.', color: '#000000' },
+            { texto: 'P.', color: '#000000' },
+            { texto: 'Desc.', color: '#000000' },
+            { texto: 'Total', color: '#000000' }
+          ],
+          tituloTabla: 'DETALLE DE PRODUCTOS',
+          colorTituloTabla: '#000000',
+          visible: true
+        },
+        {
+          id: 'totales',
+          tipo: 'totales',
+          x: 15,
+          y: 200,
+          width: 180,
+          height: 20,
+          fontSize: 10,
+          align: 'right',
+          color: '#000000',
+          colorTotal: '#0284c7',
+          lineas: [
+            { label: 'Subtotal:', color: '#000000' },
+            { label: 'Descuento General:', color: '#000000' },
+            { label: 'Impuesto (15.25%):', color: '#000000' },
+            { label: 'TOTAL:', color: '#0284c7' }
+          ],
+          visible: true
+        },
+        {
+          id: 'observaciones',
+          tipo: 'texto',
+          texto: 'Observaciones:\n{observaciones}',
+          x: 15,
+          y: 230,
+          width: 180,
+          height: 30,
+          fontSize: 10,
+          fontWeight: 'normal',
+          align: 'left',
+          color: '#000000',
+          visible: true
+        }
+      ],
+      margen: 15,
+      colorPrimario: '#2563eb',
+      colorSecundario: '#6b7280'
+    }
+  }
+
+  // Cargar plantillas guardadas y asegurar que DEMO siempre exista
   const cargarPlantillas = () => {
     try {
       const guardadas = localStorage.getItem('cotizacion_plantillas')
+      let plantillas = []
+      
       if (guardadas) {
         const parsed = JSON.parse(guardadas)
         // Filtrar la "Plantilla en Blanco" si existe
-        const plantillasFiltradas = Array.isArray(parsed) 
+        plantillas = Array.isArray(parsed) 
           ? parsed.filter(p => p.nombre !== 'Plantilla en Blanco') 
           : []
-        return plantillasFiltradas.length > 0 ? plantillasFiltradas : []
       }
+      
+      // Verificar si existe la plantilla DEMO
+      const existeDEMO = plantillas.some(p => p.nombre === 'DEMO')
+      
+      // Si no existe, agregarla al inicio
+      if (!existeDEMO) {
+        const plantillaDEMO = getPlantillaDEMODefault()
+        plantillas = [plantillaDEMO, ...plantillas]
+        // Guardar en localStorage
+        localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillas))
+      } else {
+        // Si existe, asegurar que esté al inicio y actualizar si es necesario
+        const indexDEMO = plantillas.findIndex(p => p.nombre === 'DEMO')
+        if (indexDEMO > 0) {
+          // Mover DEMO al inicio
+          const plantillaDEMO = plantillas[indexDEMO]
+          plantillas.splice(indexDEMO, 1)
+          plantillas.unshift(plantillaDEMO)
+          localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillas))
+        }
+      }
+      
+      return plantillas
     } catch (e) {
       console.error('Error al cargar plantillas:', e)
+      // Si hay error, retornar al menos la plantilla DEMO
+      const plantillaDEMO = getPlantillaDEMODefault()
+      try {
+        localStorage.setItem('cotizacion_plantillas', JSON.stringify([plantillaDEMO]))
+      } catch (e2) {
+        console.error('Error al guardar plantilla DEMO:', e2)
+      }
+      return [plantillaDEMO]
     }
-    return []
   }
   
+  // Función helper para asegurar que DEMO siempre esté presente
+  const asegurarPlantillaDEMO = (plantillasArray) => {
+    const existeDEMO = plantillasArray.some(p => p.nombre === 'DEMO')
+    
+    if (!existeDEMO) {
+      // Si no existe, agregarla al inicio
+      const plantillaDEMO = getPlantillaDEMODefault()
+      return [plantillaDEMO, ...plantillasArray]
+    } else {
+      // Si existe, asegurar que esté al inicio
+      const indexDEMO = plantillasArray.findIndex(p => p.nombre === 'DEMO')
+      if (indexDEMO > 0) {
+        const plantillaDEMO = plantillasArray[indexDEMO]
+        const nuevasPlantillas = [...plantillasArray]
+        nuevasPlantillas.splice(indexDEMO, 1)
+        nuevasPlantillas.unshift(plantillaDEMO)
+        return nuevasPlantillas
+      }
+    }
+    
+    return plantillasArray
+  }
+  
+  // Función para convertir headers antiguos (array de strings) al nuevo formato (array de objetos)
+  const convertirHeadersTabla = (elementos) => {
+    return elementos.map(elemento => {
+      if (elemento.tipo === 'tabla') {
+        // Convertir headers si son strings (formato antiguo)
+        if (elemento.headers) {
+          const primerHeader = elemento.headers[0]
+          if (typeof primerHeader === 'string') {
+            // Convertir array de strings a array de objetos
+            elemento.headers = elemento.headers.map(texto => ({
+              texto: texto,
+              color: '#000000'
+            }))
+          }
+        }
+        // Agregar título de tabla si no existe (para plantillas antiguas)
+        if (!elemento.tituloTabla) {
+          elemento.tituloTabla = 'DETALLE DE PRODUCTOS'
+        }
+        if (!elemento.colorTituloTabla) {
+          elemento.colorTituloTabla = '#000000'
+        }
+      }
+      // Convertir totales si no tienen lineas (formato antiguo)
+      if (elemento.tipo === 'totales' && !elemento.lineas) {
+        elemento.lineas = [
+          { label: 'Subtotal:', color: '#000000' },
+          { label: 'Descuento General:', color: '#000000' },
+          { label: 'Impuesto (15.25%):', color: '#000000' },
+          { label: 'TOTAL:', color: elemento.colorTotal || '#0284c7' }
+        ]
+      }
+      return elemento
+    })
+  }
+
   const [plantillas, setPlantillas] = useState(cargarPlantillas())
   const [plantillaActual, setPlantillaActual] = useState(null) // Nombre de la plantilla en uso
   const [plantillaCargada, setPlantillaCargada] = useState(false) // Para evitar loops
@@ -2231,8 +2426,11 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
       if (plantillaActivaNombre) {
         const plantilla = plantillas.find(p => p.nombre === plantillaActivaNombre)
         if (plantilla) {
+          // Convertir headers antiguos al nuevo formato si es necesario
+          const elementosConvertidos = convertirHeadersTabla(JSON.parse(JSON.stringify(plantilla.elementos)))
+          
           setConfig({
-            elementos: JSON.parse(JSON.stringify(plantilla.elementos)),
+            elementos: elementosConvertidos,
             margen: plantilla.margen || 15,
             colorPrimario: plantilla.colorPrimario || '#2563eb',
             colorSecundario: plantilla.colorSecundario || '#6b7280'
@@ -2248,8 +2446,11 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
 
   // Aplicar una plantilla
   const aplicarPlantilla = (plantilla) => {
+    // Convertir headers antiguos al nuevo formato si es necesario
+    const elementosConvertidos = convertirHeadersTabla(JSON.parse(JSON.stringify(plantilla.elementos)))
+    
     setConfig({
-      elementos: JSON.parse(JSON.stringify(plantilla.elementos)),
+      elementos: elementosConvertidos,
       margen: plantilla.margen || 15,
       colorPrimario: plantilla.colorPrimario || '#2563eb',
       colorSecundario: plantilla.colorSecundario || '#6b7280'
@@ -2288,8 +2489,8 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
       colorSecundario: '#6b7280'
     }
     
-    // Guardar la plantilla
-    const plantillasActualizadas = [...plantillas, nuevaPlantilla]
+    // Guardar la plantilla y asegurar que DEMO esté presente
+    const plantillasActualizadas = asegurarPlantillaDEMO([...plantillas, nuevaPlantilla])
     setPlantillas(plantillasActualizadas)
     localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
     
@@ -2326,7 +2527,7 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     }
     
     if (confirm('¿Estás seguro de eliminar esta plantilla?')) {
-      const plantillasActualizadas = plantillas.filter((_, i) => i !== index)
+      const plantillasActualizadas = asegurarPlantillaDEMO(plantillas.filter((_, i) => i !== index))
       setPlantillas(plantillasActualizadas)
       localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
       
@@ -2370,8 +2571,9 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
       return p
     })
     
-    setPlantillas(plantillasActualizadas)
-    localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
+    const plantillasConDEMO = asegurarPlantillaDEMO(plantillasActualizadas)
+    setPlantillas(plantillasConDEMO)
+    localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasConDEMO))
     
     // Si estamos editando la plantilla activa, actualizar su referencia
     if (plantillaActual === plantillaAEditar.nombre) {
@@ -2409,8 +2611,8 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
       colorSecundario: plantillaADuplicar.colorSecundario || '#6b7280'
     }
     
-    // Guardar la plantilla duplicada
-    const plantillasActualizadas = [...plantillas, plantillaDuplicada]
+    // Guardar la plantilla duplicada y asegurar que DEMO esté presente
+    const plantillasActualizadas = asegurarPlantillaDEMO([...plantillas, plantillaDuplicada])
     setPlantillas(plantillasActualizadas)
     localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
     
@@ -2746,11 +2948,29 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
       fontSize: tipo === 'header' ? 18 : tipo === 'tabla' ? 9 : tipo === 'totales' ? 10 : 11,
       color: tipo === 'header' ? config.colorPrimario : '#000000',
       colorTotal: tipo === 'totales' ? '#0284c7' : undefined, // Color específico para el TOTAL
+      lineas: tipo === 'totales' ? [
+        { label: 'Subtotal:', color: '#000000' },
+        { label: 'Descuento General:', color: '#000000' },
+        { label: 'Impuesto (15.25%):', color: '#000000' },
+        { label: 'TOTAL:', color: '#0284c7' }
+      ] : undefined,
       texto: tipo === 'texto' ? 'Nuevo texto' : tipo === 'header' ? 'Nuevo Encabezado' : '',
       align: tipo === 'header' || tipo === 'totales' ? 'center' : 'left',
       bold: tipo === 'header' ? true : false,
       visible: true,
-      locked: tipo === 'tabla' || tipo === 'totales' // Tabla y Totales no son editables
+      locked: tipo === 'tabla' || tipo === 'totales', // Tabla y Totales no son editables
+      // Para tablas, agregar headers con estructura de objeto
+      headers: tipo === 'tabla' ? [
+        { texto: 'Producto', color: '#000000' },
+        { texto: 'Cant.', color: '#000000' },
+        { texto: 'Pres.', color: '#000000' },
+        { texto: 'P. Unit.', color: '#000000' },
+        { texto: 'Desc.', color: '#000000' },
+        { texto: 'Total', color: '#000000' }
+      ] : undefined,
+      // Para tablas, agregar título editable
+      tituloTabla: tipo === 'tabla' ? 'DETALLE DE PRODUCTOS' : undefined,
+      colorTituloTabla: tipo === 'tabla' ? '#000000' : undefined
     }
     setConfig(prev => ({
       ...prev,
@@ -2771,6 +2991,8 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
 
   const handleMouseDown = (e, elemento) => {
     if (elemento.locked) return
+    // Las tablas no se pueden arrastrar
+    if (elemento.tipo === 'tabla') return
     e.stopPropagation()
     const rect = canvasRef.current.getBoundingClientRect()
     const x = (e.clientX - rect.left) / escala
@@ -2863,131 +3085,149 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     })
   }
 
+  // Refs para throttling y optimización
+  const rafIdRef = useRef(null)
+  const lastUpdateRef = useRef({ x: null, y: null, width: null, height: null })
+  
   const handleMouseMove = (e) => {
-    if (redimensionando && elementoSeleccionado) {
-      // Modo redimensionamiento
-      const elemento = config.elementos.find(el => el.id === elementoSeleccionado)
-      if (!elemento || elemento.locked) return
-      
-      const deltaX = (e.clientX - inicioRedimensionamiento.mouseX) / escala
-      const deltaY = (e.clientY - inicioRedimensionamiento.mouseY) / escala
-      
-      let nuevaX = inicioRedimensionamiento.x
-      let nuevaY = inicioRedimensionamiento.y
-      let nuevoWidth = inicioRedimensionamiento.width
-      let nuevoHeight = inicioRedimensionamiento.height
-      
-      // Calcular tamaño mínimo basado en el contenido del texto
-      const tamanoMinimo = calcularTamanoMinimoTexto(elemento)
-      const minWidth = tamanoMinimo.minWidth
-      const minHeight = tamanoMinimo.minHeight
-      
-      // Debug: solo para elementos de texto
-      if (elemento.tipo === 'texto') {
-        console.log('Redimensionando texto:', {
-          texto: elemento.texto,
-          fontSize: elemento.fontSize,
-          minWidth,
-          minHeight,
-          widthActual: nuevoWidth,
-          heightActual: nuevoHeight
-        })
-      }
-      
-      // Redimensionar según el handle, respetando el tamaño mínimo del texto
-      if (redimensionando.includes('e')) { // Este (derecha)
-        const nuevoWidthCalculado = inicioRedimensionamiento.width + deltaX
-        nuevoWidth = Math.max(minWidth, nuevoWidthCalculado)
-      }
-      if (redimensionando.includes('w')) { // Oeste (izquierda)
-        const nuevoWidthCalculado = inicioRedimensionamiento.width - deltaX
-        if (nuevoWidthCalculado >= minWidth) {
-          nuevoWidth = nuevoWidthCalculado
-          nuevaX = inicioRedimensionamiento.x + deltaX
-        } else {
-          // No permitir que sea menor al mínimo
-          nuevoWidth = minWidth
-          nuevaX = inicioRedimensionamiento.x + (inicioRedimensionamiento.width - minWidth)
-        }
-      }
-      if (redimensionando.includes('s')) { // Sur (abajo)
-        const nuevoHeightCalculado = inicioRedimensionamiento.height + deltaY
-        nuevoHeight = Math.max(minHeight, nuevoHeightCalculado)
-      }
-      if (redimensionando.includes('n')) { // Norte (arriba)
-        const nuevoHeightCalculado = inicioRedimensionamiento.height - deltaY
-        if (nuevoHeightCalculado >= minHeight) {
-          nuevoHeight = nuevoHeightCalculado
-          nuevaY = inicioRedimensionamiento.y + deltaY
-        } else {
-          // No permitir que sea menor al mínimo
-          nuevoHeight = minHeight
-          nuevaY = inicioRedimensionamiento.y + (inicioRedimensionamiento.height - minHeight)
-        }
-      }
-      
-      // Asegurar que después de todos los cálculos, el tamaño mínimo se respete
-      nuevoWidth = Math.max(minWidth, nuevoWidth)
-      nuevoHeight = Math.max(minHeight, nuevoHeight)
-      
-      // Limitar dentro de la página A4 respetando márgenes
-      const margen = config.margen || 15
-      if (nuevaX + nuevoWidth > 210 - margen) {
-        nuevoWidth = 210 - margen - nuevaX
-      }
-      if (nuevaY + nuevoHeight > 297 - margen) {
-        nuevoHeight = 297 - margen - nuevaY
-      }
-      // Asegurar que no salga de los márgenes izquierdo y superior
-      if (nuevaX < margen) {
-        nuevoWidth = nuevoWidth - (margen - nuevaX)
-        nuevaX = margen
-      }
-      if (nuevaY < margen) {
-        nuevoHeight = nuevoHeight - (margen - nuevaY)
-        nuevaY = margen
-      }
-      
-      // Si es header, mantener x=0 y width=210
-      if (elemento.tipo === 'header') {
-        nuevaX = 0
-        nuevoWidth = 210
-      }
-      
-      actualizarElemento(elementoSeleccionado, { 
-        x: nuevaX, 
-        y: nuevaY, 
-        width: nuevoWidth, 
-        height: nuevoHeight 
-      })
-    } else if (arrastrando && elementoSeleccionado) {
-      // Modo arrastre
-      const elemento = config.elementos.find(el => el.id === elementoSeleccionado)
-      if (!elemento || elemento.locked) return
-      
-      const rect = canvasRef.current.getBoundingClientRect()
-      let x = (e.clientX - rect.left) / escala - offsetArrastre.x
-      let y = (e.clientY - rect.top) / escala - offsetArrastre.y
-      
-      // Si es un header, debe estar en y: 0
-      if (elemento.tipo === 'header') {
-        x = 0
-        y = 0
-      } else {
-        // Limitar movimiento respetando los márgenes de la regla
-        const margen = config.margen || 15
-        const maxX = 210 - elemento.width
-        const maxY = 297 - elemento.height
-        // Asegurar que el elemento no salga de los márgenes
-        x = Math.max(margen, Math.min(maxX - margen, x))
-        y = Math.max(margen, Math.min(maxY - margen, y))
-      }
-
-      actualizarElemento(elementoSeleccionado, { x, y })
+    // Cancelar frame anterior si existe
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current)
     }
+    
+    // Usar requestAnimationFrame para throttling (sincronizado con el refresh rate)
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (redimensionando && elementoSeleccionado) {
+        // Modo redimensionamiento
+        const elemento = config.elementos.find(el => el.id === elementoSeleccionado)
+        if (!elemento || elemento.locked) return
+        
+        const deltaX = (e.clientX - inicioRedimensionamiento.mouseX) / escala
+        const deltaY = (e.clientY - inicioRedimensionamiento.mouseY) / escala
+        
+        let nuevaX = inicioRedimensionamiento.x
+        let nuevaY = inicioRedimensionamiento.y
+        let nuevoWidth = inicioRedimensionamiento.width
+        let nuevoHeight = inicioRedimensionamiento.height
+        
+        // Calcular tamaño mínimo basado en el contenido del texto
+        const tamanoMinimo = calcularTamanoMinimoTexto(elemento)
+        const minWidth = tamanoMinimo.minWidth
+        const minHeight = tamanoMinimo.minHeight
+        
+        // Redimensionar según el handle, respetando el tamaño mínimo del texto
+        if (redimensionando.includes('e')) { // Este (derecha)
+          const nuevoWidthCalculado = inicioRedimensionamiento.width + deltaX
+          nuevoWidth = Math.max(minWidth, nuevoWidthCalculado)
+        }
+        if (redimensionando.includes('w')) { // Oeste (izquierda)
+          const nuevoWidthCalculado = inicioRedimensionamiento.width - deltaX
+          if (nuevoWidthCalculado >= minWidth) {
+            nuevoWidth = nuevoWidthCalculado
+            nuevaX = inicioRedimensionamiento.x + deltaX
+          } else {
+            nuevoWidth = minWidth
+            nuevaX = inicioRedimensionamiento.x + (inicioRedimensionamiento.width - minWidth)
+          }
+        }
+        if (redimensionando.includes('s')) { // Sur (abajo)
+          const nuevoHeightCalculado = inicioRedimensionamiento.height + deltaY
+          nuevoHeight = Math.max(minHeight, nuevoHeightCalculado)
+        }
+        if (redimensionando.includes('n')) { // Norte (arriba)
+          const nuevoHeightCalculado = inicioRedimensionamiento.height - deltaY
+          if (nuevoHeightCalculado >= minHeight) {
+            nuevoHeight = nuevoHeightCalculado
+            nuevaY = inicioRedimensionamiento.y + deltaY
+          } else {
+            nuevoHeight = minHeight
+            nuevaY = inicioRedimensionamiento.y + (inicioRedimensionamiento.height - minHeight)
+          }
+        }
+        
+        nuevoWidth = Math.max(minWidth, nuevoWidth)
+        nuevoHeight = Math.max(minHeight, nuevoHeight)
+        
+        const margen = config.margen || 15
+        if (nuevaX + nuevoWidth > 210 - margen) {
+          nuevoWidth = 210 - margen - nuevaX
+        }
+        if (nuevaY + nuevoHeight > 297 - margen) {
+          nuevoHeight = 297 - margen - nuevaY
+        }
+        if (nuevaX < margen) {
+          nuevoWidth = nuevoWidth - (margen - nuevaX)
+          nuevaX = margen
+        }
+        if (nuevaY < margen) {
+          nuevoHeight = nuevoHeight - (margen - nuevaY)
+          nuevaY = margen
+        }
+        
+        if (elemento.tipo === 'header') {
+          nuevaX = 0
+          nuevoWidth = 210
+        }
+        
+        if (elemento.tipo === 'tabla') {
+          return
+        }
+        
+        // Solo actualizar si hay cambios significativos (umbral de 0.5mm)
+        const lastUpdate = lastUpdateRef.current
+        const hayCambio = Math.abs(lastUpdate.x - nuevaX) > 0.5 || 
+                         Math.abs(lastUpdate.y - nuevaY) > 0.5 ||
+                         Math.abs(lastUpdate.width - nuevoWidth) > 0.5 ||
+                         Math.abs(lastUpdate.height - nuevoHeight) > 0.5
+        
+        if (hayCambio) {
+          lastUpdateRef.current = { x: nuevaX, y: nuevaY, width: nuevoWidth, height: nuevoHeight }
+          actualizarElemento(elementoSeleccionado, { x: nuevaX, y: nuevaY, width: nuevoWidth, height: nuevoHeight })
+        }
+      } else if (arrastrando && elementoSeleccionado) {
+        // Modo arrastre
+        const elemento = config.elementos.find(el => el.id === elementoSeleccionado)
+        if (!elemento || elemento.locked) return
+        
+        if (elemento.tipo === 'tabla') {
+          return
+        }
+        
+        const rect = canvasRef.current.getBoundingClientRect()
+        let x = (e.clientX - rect.left) / escala - offsetArrastre.x
+        let y = (e.clientY - rect.top) / escala - offsetArrastre.y
+        
+        if (elemento.tipo === 'header') {
+          x = 0
+          y = 0
+        } else {
+          const margen = config.margen || 15
+          const maxX = 210 - elemento.width
+          const maxY = 297 - elemento.height
+          x = Math.max(margen, Math.min(maxX - margen, x))
+          y = Math.max(margen, Math.min(maxY - margen, y))
+        }
+
+        // Solo actualizar si hay cambios significativos (umbral de 0.5mm)
+        const lastUpdate = lastUpdateRef.current
+        const hayCambio = Math.abs(lastUpdate.x - x) > 0.5 || Math.abs(lastUpdate.y - y) > 0.5
+        
+        if (hayCambio) {
+          lastUpdateRef.current = { x, y, width: elemento.width, height: elemento.height }
+          actualizarElemento(elementoSeleccionado, { x, y })
+        }
+      }
+    })
   }
 
   const handleMouseUp = () => {
+    // Cancelar cualquier frame pendiente
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+    // Resetear último update
+    lastUpdateRef.current = { x: null, y: null, width: null, height: null }
     setArrastrando(false)
     setRedimensionando(null)
   }
@@ -3003,45 +3243,11 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     }
   }, [arrastrando, redimensionando, elementoSeleccionado, offsetArrastre, inicioRedimensionamiento])
 
-  // Función para calcular distancia entre dos puntos táctiles
-  const getTouchDistance = (touch1, touch2) => {
-    const dx = touch2.clientX - touch1.clientX
-    const dy = touch2.clientY - touch1.clientY
-    return Math.sqrt(dx * dx + dy * dy)
-  }
 
-  // Manejar inicio de zoom con pellizco
-  const handleTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault()
-      const distance = getTouchDistance(e.touches[0], e.touches[1])
-      setPinchStartDistance(distance)
-      // Guardar el zoom actual en la ref
-      pinchStartZoomRef.current = zoom
-    }
-  }
-
-  // Manejar zoom con pellizco durante el movimiento
-  const handleTouchMove = (e) => {
-    if (e.touches.length === 2 && pinchStartDistance !== null) {
-      e.preventDefault()
-      const distance = getTouchDistance(e.touches[0], e.touches[1])
-      const scale = distance / pinchStartDistance
-      const newZoom = Math.round(pinchStartZoomRef.current * scale)
-      // Limitar zoom entre 25% y 300%
-      const clampedZoom = Math.max(25, Math.min(300, newZoom))
-      setZoom(clampedZoom)
-    }
-  }
-
-  // Manejar fin de zoom con pellizco
-  const handleTouchEnd = (e) => {
-    if (e.touches.length < 2) {
-      setPinchStartDistance(null)
-    }
-  }
-
-  const elementoActual = config.elementos.find(el => el.id === elementoSeleccionado)
+  // Memoizar elementoActual para evitar buscar en cada render
+  const elementoActual = useMemo(() => {
+    return config.elementos.find(el => el.id === elementoSeleccionado)
+  }, [config.elementos, elementoSeleccionado])
 
   // Reorganizar automáticamente al cargar si hay superposiciones
   useEffect(() => {
@@ -3114,8 +3320,9 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
         }
         return p
       })
-      setPlantillas(plantillasActualizadas)
-      localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
+      const plantillasConDEMO = asegurarPlantillaDEMO(plantillasActualizadas)
+      setPlantillas(plantillasConDEMO)
+      localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasConDEMO))
       alert(`✅ Plantilla "${plantillaActual}" actualizada exitosamente!`)
     }
     onSave(config)
@@ -3296,12 +3503,8 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
             ref={canvasContainerRef}
             className="flex-1 flex items-start sm:items-center justify-center p-2 sm:p-6 overflow-auto" 
             style={{ 
-              backgroundColor: '#f5f5f5',
-              touchAction: 'pan-x pan-y pinch-zoom'
+              backgroundColor: '#f5f5f5'
             }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
           >
             <div className="relative" style={{ paddingTop: '25px', maxWidth: '100%', overflow: 'auto' }}>
               {/* Información de dimensiones */}
@@ -3489,26 +3692,31 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                 )}
 
                 {/* Renderizar elementos - ordenados por tipo para z-index correcto */}
-                {config.elementos
-                  .filter(el => {
-                    // Ocultar título y subtítulo si están dentro del área del header
-                    if ((el.id === 'titulo' || el.id === 'subtitulo') && el.visible) {
-                      const header = config.elementos.find(e => e.id === 'header' && e.visible)
-                      if (header) {
-                        // Si están dentro del área del header, no renderizarlos individualmente
-                        return false
-                      }
-                    }
-                    return el.visible
-                  })
-                  .sort((a, b) => {
-                    // Headers primero (z-index más bajo), luego otros elementos
-                    if (a.tipo === 'header' && b.tipo !== 'header') return -1
-                    if (a.tipo !== 'header' && b.tipo === 'header') return 1
-                    // Dentro del mismo tipo, ordenar por Y
-                    return a.y - b.y
-                  })
-                  .map((elemento, index) => {
+                {(() => {
+                  // Pre-calcular elementos comunes una sola vez para evitar múltiples .find()
+                  const header = config.elementos.find(e => e.id === 'header' && e.visible)
+                  const tituloEl = config.elementos.find(e => e.id === 'titulo')
+                  const subtituloEl = config.elementos.find(e => e.id === 'subtitulo' && e.visible)
+                  
+                  const elementosFiltrados = useMemo(() => {
+                    return config.elementos
+                      .filter(el => {
+                        // Ocultar título y subtítulo si están dentro del área del header
+                        if ((el.id === 'titulo' || el.id === 'subtitulo') && el.visible && header) {
+                          return false
+                        }
+                        return el.visible
+                      })
+                      .sort((a, b) => {
+                        // Headers primero (z-index más bajo), luego otros elementos
+                        if (a.tipo === 'header' && b.tipo !== 'header') return -1
+                        if (a.tipo !== 'header' && b.tipo === 'header') return 1
+                        // Dentro del mismo tipo, ordenar por Y
+                        return a.y - b.y
+                      })
+                  }, [config.elementos, header])
+                  
+                  return elementosFiltrados.map((elemento, index) => {
                   const estaSeleccionado = elementoSeleccionado === elemento.id
                   // z-index: headers más bajo, elementos seleccionados más alto
                   const zIndex = elemento.tipo === 'header' ? 1 : estaSeleccionado ? 100 : 10 + index
@@ -3553,8 +3761,8 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                         fontFamily: 'helvetica, Arial, sans-serif'
                       }}
                     >
-                      {/* Handles de redimensionamiento (solo si está seleccionado y no es header) */}
-                      {estaSeleccionado && elemento.tipo !== 'header' && !elemento.locked && (
+                      {/* Handles de redimensionamiento (solo si está seleccionado, no es header ni tabla) */}
+                      {estaSeleccionado && elemento.tipo !== 'header' && elemento.tipo !== 'tabla' && !elemento.locked && (
                         <>
                           {/* Esquinas */}
                           <div
@@ -3681,39 +3889,53 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                           }) : 'Texto'}
                         </div>
                       )}
-                      {elemento.tipo === 'header' && (
-                        <div className="w-full h-full flex flex-col items-center justify-center" style={{ padding: `${6 * escala}px 0` }}>
-                          {elemento.id === 'header' ? (
-                            <>
-                              {/* Mostrar título principal del header */}
-                              <span style={{ 
-                                fontSize: `${18 * escala}px`, 
-                                lineHeight: `${18 * escala * 1.2}px`, 
-                                fontWeight: 'bold', 
-                                textTransform: 'uppercase',
-                                color: '#ffffff'
-                              }}>
-                                {config.elementos.find(el => el.id === 'titulo')?.texto || 'COTIZACIÓN - NOTA DE VENTA'}
-                              </span>
-                              {/* Mostrar subtítulo si existe */}
-                              {config.elementos.find(el => el.id === 'subtitulo' && el.visible) && (
+                      {elemento.tipo === 'header' && (() => {
+                        // Usar valores pre-calculados en lugar de buscar repetidamente
+                        const tituloTexto = tituloEl?.texto || 'COTIZACIÓN - NOTA DE VENTA'
+                        const subtituloTexto = subtituloEl?.texto || 'Qubit - Sistema de Gestión'
+                        
+                        // Pre-calcular estilos para evitar recalcular en cada render
+                        const paddingHeader = 6 * escala
+                        const fontSizeTitulo = 18 * escala
+                        const lineHeightTitulo = fontSizeTitulo * 1.2
+                        const fontSizeSubtitulo = 10 * escala
+                        const lineHeightSubtitulo = fontSizeSubtitulo * 1.2
+                        const marginTopSubtitulo = 3 * escala
+                        
+                        return (
+                          <div className="w-full h-full flex flex-col items-center justify-center" style={{ padding: `${paddingHeader}px 0` }}>
+                            {elemento.id === 'header' ? (
+                              <>
+                                {/* Mostrar título principal del header */}
                                 <span style={{ 
-                                  fontSize: `${10 * escala}px`, 
-                                  lineHeight: `${10 * escala * 1.2}px`, 
-                                  marginTop: `${3 * escala}px`,
+                                  fontSize: `${fontSizeTitulo}px`, 
+                                  lineHeight: `${lineHeightTitulo}px`, 
+                                  fontWeight: 'bold', 
+                                  textTransform: 'uppercase',
                                   color: '#ffffff'
                                 }}>
-                                  {config.elementos.find(el => el.id === 'subtitulo').texto || 'Cubic - Sistema de Gestión'}
+                                  {tituloTexto}
                                 </span>
-                              )}
-                            </>
-                          ) : (
-                            <span style={{ fontSize: `${elemento.fontSize * escala}px`, lineHeight: `${elemento.fontSize * escala * 1.2}px` }}>
-                              {elemento.texto || 'Encabezado'}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                                {/* Mostrar subtítulo si existe */}
+                                {subtituloEl && (
+                                  <span style={{ 
+                                    fontSize: `${fontSizeSubtitulo}px`, 
+                                    lineHeight: `${lineHeightSubtitulo}px`, 
+                                    marginTop: `${marginTopSubtitulo}px`,
+                                    color: '#ffffff'
+                                  }}>
+                                    {subtituloTexto}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span style={{ fontSize: `${elemento.fontSize * escala}px`, lineHeight: `${elemento.fontSize * escala * 1.2}px` }}>
+                                {elemento.texto || 'Encabezado'}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
                       {elemento.tipo === 'tabla' && (
                         <div className="pdf-tabla-blanca" style={{ 
                           width: '100%', 
@@ -3731,10 +3953,10 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                             marginBottom: '8px',
                             paddingBottom: '4px',
                             fontSize: `${(elemento.fontSize || 8) * escala * 1.1}px`, 
-                            color: '#000000 !important',
+                            color: `${elemento.colorTituloTabla || '#000000'} !important`,
                             backgroundColor: '#ffffff !important'
                           }}>
-                            DETALLE DE PRODUCTOS
+                            {elemento.tituloTabla || 'DETALLE DE PRODUCTOS'}
                           </div>
                           <div style={{ flex: 1, overflow: 'hidden' }}>
                             <div className="pdf-tabla-headers" style={{ 
@@ -3746,15 +3968,26 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                               borderBottom: '1px solid #e5e7eb',
                               paddingBottom: '4px',
                               marginBottom: '4px',
-                              color: '#000000 !important',
                               backgroundColor: '#ffffff !important'
                             }}>
-                              <div className="pdf-tabla-col" style={{ color: '#000000 !important', backgroundColor: '#ffffff !important' }}>Producto</div>
-                              <div className="pdf-tabla-col" style={{ textAlign: 'center', color: '#000000 !important', backgroundColor: '#ffffff !important' }}>Cant.</div>
-                              <div className="pdf-tabla-col" style={{ textAlign: 'center', color: '#000000 !important', backgroundColor: '#ffffff !important' }}>Pres.</div>
-                              <div className="pdf-tabla-col" style={{ textAlign: 'center', color: '#000000 !important', backgroundColor: '#ffffff !important' }}>P. Unit.</div>
-                              <div className="pdf-tabla-col" style={{ textAlign: 'center', color: '#000000 !important', backgroundColor: '#ffffff !important' }}>Desc.</div>
-                              <div className="pdf-tabla-col" style={{ textAlign: 'center', color: '#000000 !important', backgroundColor: '#ffffff !important' }}>Total</div>
+                              {(elemento.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total']).map((header, idx) => {
+                                const texto = typeof header === 'string' ? header : (header.texto || '')
+                                const color = typeof header === 'string' ? '#000000' : (header.color || '#000000')
+                                const align = idx === 0 ? 'left' : 'center'
+                                return (
+                                  <div 
+                                    key={idx}
+                                    className="pdf-tabla-col" 
+                                    style={{ 
+                                      textAlign: align,
+                                      color: `${color} !important`, 
+                                      backgroundColor: '#ffffff !important' 
+                                    }}
+                                  >
+                                    {texto}
+                                  </div>
+                                )
+                              })}
                             </div>
                             <div style={{ 
                               fontSize: `${(elemento.fontSize || 8) * escala * 0.8}px`, 
@@ -3768,50 +4001,78 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                           </div>
                         </div>
                       )}
-                      {elemento.tipo === 'totales' && (
-                        <div className="pdf-totales-box" style={{ 
-                          width: '100%', 
-                          height: '100%', 
+                      {elemento.tipo === 'totales' && (() => {
+                        // Memoizar las líneas por defecto fuera del componente para evitar recrearlas
+                        const LINEAS_DEFAULT = [
+                          { label: 'Subtotal:', color: '#000000' },
+                          { label: 'Descuento General:', color: '#000000' },
+                          { label: 'Impuesto (15.25%):', color: '#000000' },
+                          { label: 'TOTAL:', color: '#0284c7' }
+                        ]
+                        const VALORES = ['{subtotal}', '{descuento}', '{impuesto}', '{total}']
+                        
+                        const lineas = elemento.lineas || LINEAS_DEFAULT
+                        const fontSizeBase = elemento.fontSize || 10
+                        const paddingEscala = 3 * escala
+                        const marginEscala = 2 * escala
+                        const gapEscala = 2 * escala
+                        const fontSizeBaseEscala = fontSizeBase * escala
+                        const fontSizeTotalEscala = fontSizeBaseEscala * 1.2
+                        
+                        // Pre-calcular estilos del contenedor
+                        const containerStyle = {
+                          width: '100%',
+                          height: '100%',
                           border: '1px solid #d1d5db',
                           display: 'flex',
                           flexDirection: 'column',
-                          padding: `${3 * escala}px`, 
-                          backgroundColor: '#ffffff !important', 
-                          color: '#000000 !important',
-                          fontSize: `${(elemento.fontSize || 10) * escala}px`,
-                          gap: `${2 * escala}px`
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#000000 !important' }}>
-                            <span>Subtotal:</span>
-                            <span>{'{subtotal}'}</span>
+                          padding: `${paddingEscala}px`,
+                          backgroundColor: '#ffffff',
+                          color: '#000000',
+                          fontSize: `${fontSizeBaseEscala}px`,
+                          gap: `${gapEscala}px`
+                        }
+                        
+                        return (
+                          <div className="pdf-totales-box" style={containerStyle}>
+                            {lineas.map((linea, index) => {
+                              const esTotal = index === 3
+                              const esDescuento = index === 1
+                              const colorLinea = linea.color || '#000000'
+                              
+                              // Pre-calcular estilos de cada línea
+                              const lineaStyle = {
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                color: colorLinea,
+                                fontWeight: esTotal ? 'bold' : 'normal',
+                                fontSize: esTotal ? `${fontSizeTotalEscala}px` : `${fontSizeBaseEscala}px`,
+                                borderTop: esTotal ? '2px solid #d1d5db' : 'none',
+                                paddingTop: esTotal ? `${paddingEscala}px` : '0',
+                                marginTop: esTotal ? `${marginEscala}px` : '0',
+                                paddingBottom: index === 2 ? `${marginEscala}px` : '0'
+                              }
+                              
+                              const valorStyle = {
+                                fontWeight: 'bold',
+                                color: esDescuento ? '#dc2626' : colorLinea
+                              }
+                              
+                              return (
+                                <div key={index} style={lineaStyle}>
+                                  <span>{linea.label}</span>
+                                  <span style={valorStyle}>{VALORES[index]}</span>
+                                </div>
+                              )
+                            })}
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#000000 !important' }}>
-                            <span>Descuento General:</span>
-                            <span>{'{descuento}'}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#000000 !important', paddingBottom: `${2 * escala}px` }}>
-                            <span>Impuesto (15.25%):</span>
-                            <span>{'{impuesto}'}</span>
-                          </div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            color: `${elemento.colorTotal || '#0284c7'} !important`,
-                            fontWeight: 'bold',
-                            fontSize: `${(elemento.fontSize || 10) * escala * 1.2}px`,
-                            borderTop: '2px solid #d1d5db',
-                            paddingTop: `${3 * escala}px`,
-                            marginTop: `${2 * escala}px`
-                          }}>
-                            <span>TOTAL:</span>
-                            <span>{'{total}'}</span>
-                          </div>
-                        </div>
-                      )}
+                        )
+                      })()}
                       {/* No mostrar medidas en azul durante redimensionamiento */}
                     </div>
                   )
-                })}
+                  })
+                })()}
               </div>
             </div>
           </div>
@@ -3822,57 +4083,75 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
               <>
                 <h3 className="font-semibold mb-3 lg:mb-4 text-sm lg:text-base" style={{ color: 'var(--color-text)' }}>Propiedades</h3>
                 
-                {/* Posición y Tamaño */}
-                <div className="space-y-4 mb-6">
-              <div>
-                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                      Posición X (mm)
-                    </label>
-                    <input
-                      type="number"
-                      value={elementoActual.x}
-                      onChange={(e) => actualizarElemento(elementoActual.id, { x: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                    />
+                {/* Posición y Tamaño - Deshabilitado para tablas */}
+                {elementoActual.tipo !== 'tabla' && (
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Posición X (mm)
+                      </label>
+                      <input
+                        type="number"
+                        value={elementoActual.x}
+                        onChange={(e) => actualizarElemento(elementoActual.id, { x: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Posición Y (mm)
+                      </label>
+                      <input
+                        type="number"
+                        value={elementoActual.y}
+                        onChange={(e) => actualizarElemento(elementoActual.id, { y: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Ancho (mm)
+                      </label>
+                      <input
+                        type="number"
+                        value={elementoActual.width}
+                        onChange={(e) => actualizarElemento(elementoActual.id, { width: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Alto (mm)
+                      </label>
+                      <input
+                        type="number"
+                        value={elementoActual.height}
+                        onChange={(e) => actualizarElemento(elementoActual.id, { height: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                      Posición Y (mm)
-                    </label>
-                    <input
-                      type="number"
-                      value={elementoActual.y}
-                      onChange={(e) => actualizarElemento(elementoActual.id, { y: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                    />
+                )}
+                
+                {/* Información de tabla (solo lectura) */}
+                {elementoActual.tipo === 'tabla' && (
+                  <div className="space-y-4 mb-6 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>Tabla</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      La posición y tamaño de la tabla no se pueden modificar. Solo puedes editar el texto y color de cada celda del encabezado.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      <div>Posición X: {elementoActual.x} mm</div>
+                      <div>Posición Y: {elementoActual.y} mm</div>
+                      <div>Ancho: {elementoActual.width} mm</div>
+                      <div>Alto: {elementoActual.height} mm</div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                      Ancho (mm)
-                    </label>
-                    <input
-                      type="number"
-                      value={elementoActual.width}
-                      onChange={(e) => actualizarElemento(elementoActual.id, { width: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                      Alto (mm)
-                    </label>
-                    <input
-                      type="number"
-                      value={elementoActual.height}
-                      onChange={(e) => actualizarElemento(elementoActual.id, { height: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg"
-                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Propiedades de Texto */}
                 {elementoActual.tipo === 'texto' && (
@@ -4003,43 +4282,229 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
               </div>
                 )}
 
+                {/* Propiedades de Tabla */}
+                {elementoActual.tipo === 'tabla' && (
+                  <div className="space-y-4 mb-6">
+                    {/* Título de la tabla */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        Título de la Tabla
+                      </label>
+                      <div className="p-3 border rounded-lg mb-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                              Texto del Título
+                            </label>
+                            <input
+                              type="text"
+                              value={elementoActual.tituloTabla || 'DETALLE DE PRODUCTOS'}
+                              onChange={(e) => actualizarElemento(elementoActual.id, { tituloTabla: e.target.value })}
+                              className="w-full px-2 py-1.5 text-sm border rounded-lg"
+                              style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                              Color del Título
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={elementoActual.colorTituloTabla || '#000000'}
+                                onChange={(e) => actualizarElemento(elementoActual.id, { colorTituloTabla: e.target.value })}
+                                className="w-12 h-8 rounded border cursor-pointer"
+                                style={{ borderColor: 'var(--color-border)' }}
+                              />
+                              <input
+                                type="text"
+                                value={elementoActual.colorTituloTabla || '#000000'}
+                                onChange={(e) => actualizarElemento(elementoActual.id, { colorTituloTabla: e.target.value })}
+                                className="flex-1 px-2 py-1.5 text-sm border rounded-lg"
+                                style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        Editar Celdas del Encabezado
+                      </label>
+                      <div className="space-y-3">
+                        {(elementoActual.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total']).map((header, index) => {
+                          // Manejar tanto el formato antiguo (string) como el nuevo (objeto)
+                          const textoActual = typeof header === 'string' ? header : (header.texto || '')
+                          const colorActual = typeof header === 'string' ? '#000000' : (header.color || '#000000')
+                          
+                          return (
+                            <div key={index} className="p-3 border rounded-lg" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                Columna {index + 1}
+                              </label>
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="block text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Texto
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={textoActual}
+                                    onChange={(e) => {
+                                      const headersActualizados = [...(elementoActual.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total'])]
+                                      // Convertir a formato de objeto si es necesario
+                                      if (typeof headersActualizados[index] === 'string') {
+                                        headersActualizados[index] = { texto: e.target.value, color: '#000000' }
+                                      } else {
+                                        headersActualizados[index] = { ...headersActualizados[index], texto: e.target.value }
+                                      }
+                                      actualizarElemento(elementoActual.id, { headers: headersActualizados })
+                                    }}
+                                    className="w-full px-2 py-1.5 text-sm border rounded-lg"
+                                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Color de Texto
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="color"
+                                      value={colorActual}
+                                      onChange={(e) => {
+                                        const headersActualizados = [...(elementoActual.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total'])]
+                                        // Convertir a formato de objeto si es necesario
+                                        if (typeof headersActualizados[index] === 'string') {
+                                          headersActualizados[index] = { texto: headersActualizados[index], color: e.target.value }
+                                        } else {
+                                          headersActualizados[index] = { ...headersActualizados[index], color: e.target.value }
+                                        }
+                                        actualizarElemento(elementoActual.id, { headers: headersActualizados })
+                                      }}
+                                      className="w-12 h-8 rounded border cursor-pointer"
+                                      style={{ borderColor: 'var(--color-border)' }}
+                                    />
+                                    <input
+                                      type="text"
+                                      value={colorActual}
+                                      onChange={(e) => {
+                                        const headersActualizados = [...(elementoActual.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total'])]
+                                        // Convertir a formato de objeto si es necesario
+                                        if (typeof headersActualizados[index] === 'string') {
+                                          headersActualizados[index] = { texto: headersActualizados[index], color: e.target.value }
+                                        } else {
+                                          headersActualizados[index] = { ...headersActualizados[index], color: e.target.value }
+                                        }
+                                        actualizarElemento(elementoActual.id, { headers: headersActualizados })
+                                      }}
+                                      className="flex-1 px-2 py-1.5 text-sm border rounded-lg"
+                                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Propiedades de Totales */}
                 {elementoActual.tipo === 'totales' && (
                   <div className="space-y-4 mb-6">
                     <div>
-                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                        Tamaño de Fuente (pt)
-                      </label>
-                      <input
-                        type="number"
-                        value={elementoActual.fontSize}
-                        onChange={(e) => actualizarElemento(elementoActual.id, { fontSize: parseInt(e.target.value) || 10 })}
-                        className="w-full px-3 py-2 border rounded-lg"
-                        style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                      />
-                      <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Tamaño para Subtotal, Descuento e Impuesto</p>
+                      <p className="text-sm mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                        La posición, tamaño y fuente de los totales no se pueden modificar. Solo puedes editar el texto y color de cada línea individualmente.
+                      </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                        Color del TOTAL
+                      <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        Editar Líneas de Totales
                       </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={elementoActual.colorTotal || '#0284c7'}
-                          onChange={(e) => actualizarElemento(elementoActual.id, { colorTotal: e.target.value })}
-                          className="w-16 h-10 rounded border cursor-pointer"
-                          style={{ borderColor: 'var(--color-border)' }}
-                        />
-                        <input
-                          type="text"
-                          value={elementoActual.colorTotal || '#0284c7'}
-                          onChange={(e) => actualizarElemento(elementoActual.id, { colorTotal: e.target.value })}
-                          className="flex-1 px-3 py-2 border rounded-lg"
-                          style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-                        />
+                      <div className="space-y-3">
+                        {(elementoActual.lineas || [
+                          { label: 'Subtotal:', color: '#000000' },
+                          { label: 'Descuento General:', color: '#000000' },
+                          { label: 'Impuesto (15.25%):', color: '#000000' },
+                          { label: 'TOTAL:', color: '#0284c7' }
+                        ]).map((linea, index) => {
+                          const nombres = ['Subtotal', 'Descuento General', 'Impuesto', 'TOTAL']
+                          return (
+                            <div key={index} className="p-3 border rounded-lg" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                                {nombres[index]}
+                              </label>
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="block text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Texto
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={linea.label || ''}
+                                    onChange={(e) => {
+                                      const lineasActualizadas = [...(elementoActual.lineas || [
+                                        { label: 'Subtotal:', color: '#000000' },
+                                        { label: 'Descuento General:', color: '#000000' },
+                                        { label: 'Impuesto (15.25%):', color: '#000000' },
+                                        { label: 'TOTAL:', color: '#0284c7' }
+                                      ])]
+                                      lineasActualizadas[index] = { ...lineasActualizadas[index], label: e.target.value }
+                                      actualizarElemento(elementoActual.id, { lineas: lineasActualizadas })
+                                    }}
+                                    className="w-full px-2 py-1.5 text-sm border rounded-lg"
+                                    style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Color de Texto
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="color"
+                                      value={linea.color || '#000000'}
+                                      onChange={(e) => {
+                                        const lineasActualizadas = [...(elementoActual.lineas || [
+                                          { label: 'Subtotal:', color: '#000000' },
+                                          { label: 'Descuento General:', color: '#000000' },
+                                          { label: 'Impuesto (15.25%):', color: '#000000' },
+                                          { label: 'TOTAL:', color: '#0284c7' }
+                                        ])]
+                                        lineasActualizadas[index] = { ...lineasActualizadas[index], color: e.target.value }
+                                        actualizarElemento(elementoActual.id, { lineas: lineasActualizadas })
+                                      }}
+                                      className="w-10 h-10 rounded border cursor-pointer"
+                                      style={{ borderColor: 'var(--color-border)' }}
+                                    />
+                                    <input
+                                      type="text"
+                                      value={linea.color || '#000000'}
+                                      onChange={(e) => {
+                                        const lineasActualizadas = [...(elementoActual.lineas || [
+                                          { label: 'Subtotal:', color: '#000000' },
+                                          { label: 'Descuento General:', color: '#000000' },
+                                          { label: 'Impuesto (15.25%):', color: '#000000' },
+                                          { label: 'TOTAL:', color: '#0284c7' }
+                                        ])]
+                                        lineasActualizadas[index] = { ...lineasActualizadas[index], color: e.target.value }
+                                        actualizarElemento(elementoActual.id, { lineas: lineasActualizadas })
+                                      }}
+                                      className="flex-1 px-2 py-1.5 text-sm border rounded-lg"
+                                      style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                      <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Solo afecta a la línea "TOTAL:"</p>
                     </div>
                   </div>
                 )}
@@ -4279,9 +4744,9 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                             marginBottom: '8px',
                             paddingBottom: '4px',
                             borderBottom: '1px solid #e5e7eb',
-                            color: '#000000 !important'
+                            color: `${elemento.colorTituloTabla || '#000000'} !important`
                           }}>
-                            DETALLE DE PRODUCTOS
+                            {elemento.tituloTabla || 'DETALLE DE PRODUCTOS'}
                           </div>
                           <div style={{
                             display: 'grid',
@@ -4292,14 +4757,25 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                             paddingBottom: '4px',
                             borderBottom: '1px solid #e5e7eb',
                             marginBottom: '8px',
-                            color: '#000000 !important'
+                            backgroundColor: '#ffffff !important'
                           }}>
-                            <div style={{ color: '#000000 !important' }}>Producto</div>
-                            <div style={{ textAlign: 'center', color: '#000000 !important' }}>Cant.</div>
-                            <div style={{ textAlign: 'center', color: '#000000 !important' }}>Pres.</div>
-                            <div style={{ textAlign: 'center', color: '#000000 !important' }}>P. Unit.</div>
-                            <div style={{ textAlign: 'center', color: '#000000 !important' }}>Desc.</div>
-                            <div style={{ textAlign: 'center', color: '#000000 !important' }}>Total</div>
+                            {(elemento.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total']).map((header, idx) => {
+                              const texto = typeof header === 'string' ? header : (header.texto || '')
+                              const color = typeof header === 'string' ? '#000000' : (header.color || '#000000')
+                              const align = idx === 0 ? 'left' : 'center'
+                              return (
+                                <div 
+                                  key={idx}
+                                  style={{ 
+                                    textAlign: align,
+                                    color: `${color} !important`,
+                                    backgroundColor: '#ffffff !important'
+                                  }}
+                                >
+                                  {texto}
+                                </div>
+                              )
+                            })}
                           </div>
                           {/* Mostrar filas vacías como plantilla */}
                           <div style={{
@@ -4338,6 +4814,62 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                         )
                       }
                       
+                      if (elemento.tipo === 'totales') {
+                        return (
+                        <div
+                          key={elemento.id}
+                          style={{
+                            position: 'absolute',
+                            left: `${elementoX}px`,
+                            top: `${elementoY}px`,
+                            width: `${Math.min(elementoWidth, maxWidth - elementoX)}px`,
+                            height: `${Math.min(elementoHeight, maxHeight - elementoY)}px`,
+                            border: '1px solid #d1d5db',
+                            backgroundColor: '#ffffff !important',
+                            padding: '8px',
+                            boxSizing: 'border-box',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            fontSize: `${(elemento.fontSize || 10) * escalaPreview * 0.4}px`
+                          }}
+                        >
+                          {(elemento.lineas || [
+                            { label: 'Subtotal:', color: '#000000' },
+                            { label: 'Descuento General:', color: '#000000' },
+                            { label: 'Impuesto (15.25%):', color: '#000000' },
+                            { label: 'TOTAL:', color: '#0284c7' }
+                          ]).map((linea, index) => {
+                            const valores = ['{subtotal}', '{descuento}', '{impuesto}', '{total}']
+                            const esTotal = index === 3
+                            const esDescuento = index === 1 // Descuento General es el índice 1
+                            return (
+                              <div 
+                                key={index}
+                                style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  color: `${linea.color || '#000000'} !important`,
+                                  fontWeight: esTotal ? 'bold' : 'normal',
+                                  fontSize: esTotal ? `${(elemento.fontSize || 10) * escalaPreview * 0.48}px` : `${(elemento.fontSize || 10) * escalaPreview * 0.4}px`,
+                                  borderTop: esTotal ? '2px solid #d1d5db' : 'none',
+                                  paddingTop: esTotal ? '4px' : '0',
+                                  marginTop: esTotal ? '4px' : '0',
+                                  paddingBottom: index === 2 ? '4px' : '0'
+                                }}
+                              >
+                                <span>{linea.label}</span>
+                                <span style={{ 
+                                  fontWeight: 'bold',
+                                  color: esDescuento ? '#dc2626 !important' : `${linea.color || '#000000'} !important`
+                                }}>{valores[index]}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        )
+                      }
+                      
                       return null
                       })
                     })()}
@@ -4360,7 +4892,7 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                     colorSecundario: config.colorSecundario
                   }
                   
-                  const plantillasActualizadas = [...plantillas, nuevaPlantilla]
+                  const plantillasActualizadas = asegurarPlantillaDEMO([...plantillas, nuevaPlantilla])
                   setPlantillas(plantillasActualizadas)
                   localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
                   
@@ -4644,8 +5176,8 @@ const ModalDetallesCotizacion = ({ cotizacion, onClose, formatCurrency, formatDa
             ? reemplazarVariables(tituloEl.texto || 'COTIZACIÓN - NOTA DE VENTA')
             : reemplazarVariables('COTIZACIÓN - NOTA DE VENTA')
           const subtituloTexto = subtituloEl
-            ? reemplazarVariables(subtituloEl.texto || 'Cubic - Sistema de Gestión')
-            : reemplazarVariables('Cubic - Sistema de Gestión')
+            ? reemplazarVariables(subtituloEl.texto || 'Qubit - Sistema de Gestión')
+            : reemplazarVariables('Qubit - Sistema de Gestión')
           
           // Renderizar título (siempre visible)
           doc.setTextColor(255, 255, 255)
@@ -4811,22 +5343,29 @@ const ModalDetallesCotizacion = ({ cotizacion, onClose, formatCurrency, formatDa
           doc.setLineWidth(0.5)
           doc.line(elemento.x, elemento.y - 10, elemento.x + elemento.width, elemento.y - 10)
           
-          // Renderizar título "DETALLE DE PRODUCTOS" antes de la tabla
+          // Renderizar título personalizado de la tabla
+          const tituloTabla = elemento.tituloTabla || 'DETALLE DE PRODUCTOS'
+          const colorTituloTabla = elemento.colorTituloTabla || '#000000'
           doc.setFontSize(Math.max((elemento.fontSize || 11) + 1, 12)) // Mínimo 12pt para el título
           doc.setFont('helvetica', 'bold')
+          const colorTituloRgb = hexToRgbEl(colorTituloTabla)
+          doc.setTextColor(colorTituloRgb[0], colorTituloRgb[1], colorTituloRgb[2])
+          doc.text(tituloTabla, elemento.x, elemento.y - 4, { align: 'left' })
+          // Restaurar color por defecto
           doc.setTextColor(0, 0, 0)
-          doc.text('DETALLE DE PRODUCTOS', elemento.x, elemento.y - 4, { align: 'left' })
           
           // Renderizar tabla de productos en la posición del elemento
           const colWidths = [80, 20, 25, 30, 25, 30]
-          const headers = ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total']
+          // Obtener headers personalizados del elemento o usar valores por defecto
+          const headersPersonalizados = elemento.headers || ['Producto', 'Cant.', 'Pres.', 'P. Unit.', 'Desc.', 'Total']
+          const headers = headersPersonalizados.map(h => typeof h === 'string' ? h : (h.texto || ''))
+          const headersColores = headersPersonalizados.map(h => typeof h === 'string' ? '#000000' : (h.color || '#000000'))
           const totalTableWidth = Math.min(elemento.width, colWidths.reduce((sum, width) => sum + width, 0))
           const tableStartX = elemento.x
           let yPos = elemento.y + 2
           
           doc.setFontSize(Math.max(elemento.fontSize || 11, 11)) // Mínimo 11pt
           doc.setFont('helvetica', 'bold')
-          doc.setTextColor(0, 0, 0)
           let xPos = tableStartX
           headers.forEach((header, index) => {
             const colWidth = (colWidths[index] / colWidths.reduce((sum, w) => sum + w, 0)) * totalTableWidth
@@ -4841,9 +5380,14 @@ const ModalDetallesCotizacion = ({ cotizacion, onClose, formatCurrency, formatDa
               headerAlign = 'right'
               headerX = xPos + colWidth - 1
             }
+            // Aplicar color personalizado
+            const colorHeader = hexToRgbEl(headersColores[index])
+            doc.setTextColor(colorHeader[0], colorHeader[1], colorHeader[2])
             doc.text(header, headerX, yPos, { align: headerAlign })
             xPos += colWidth
           })
+          // Restaurar color por defecto
+          doc.setTextColor(0, 0, 0)
           
           yPos += 6
           // Línea separadora gris claro
@@ -4928,7 +5472,6 @@ const ModalDetallesCotizacion = ({ cotizacion, onClose, formatCurrency, formatDa
           // Renderizar desglose de totales
           doc.setFontSize(elemento.fontSize || 10)
           doc.setFont('helvetica', 'normal')
-          doc.setTextColor(0, 0, 0)
           
           // Si hay una tabla antes, usar su posición final; si no, usar la posición del elemento
           let yPos = ultimaPosicionTabla || elemento.y
@@ -4940,52 +5483,79 @@ const ModalDetallesCotizacion = ({ cotizacion, onClose, formatCurrency, formatDa
           const descuentoProductos = productos.reduce((sum, p) => sum + (p.descuentoMonto || p.descuento || 0), 0)
           const descuentoTotal = descuentoGeneral + descuentoProductos
           
-          // Subtotal
-          doc.text('Subtotal:', elemento.x + 2, yPos, { align: 'left' })
-          doc.text(formatCurrency(cotizacion.subtotal || 0), elemento.x + boxWidth - 2, yPos, { align: 'right' })
-          yPos += lineHeight
+          // Obtener líneas personalizadas o usar valores por defecto
+          const lineas = elemento.lineas || [
+            { label: 'Subtotal:', color: '#000000' },
+            { label: 'Descuento General:', color: '#000000' },
+            { label: 'Impuesto (15.25%):', color: '#000000' },
+            { label: 'TOTAL:', color: '#0284c7' }
+          ]
           
-          // Descuento General (siempre mostrar)
-          if (descuentoTotal > 0) {
-            doc.setTextColor(220, 38, 38) // Rojo para descuento
-          }
-          doc.text('Descuento General:', elemento.x + 2, yPos, { align: 'left' })
-          doc.text(descuentoTotal > 0 ? `-${formatCurrency(descuentoTotal)}` : formatCurrency(0), elemento.x + boxWidth - 2, yPos, { align: 'right' })
-          doc.setTextColor(0, 0, 0)
-          yPos += lineHeight
+          // Valores para cada línea
+          const valores = [
+            formatCurrency(cotizacion.subtotal || 0),
+            descuentoTotal > 0 ? `-${formatCurrency(descuentoTotal)}` : formatCurrency(0),
+            formatCurrency(cotizacion.impuesto || 0),
+            formatCurrency(cotizacion.total || 0)
+          ]
           
-          // Impuesto
-          doc.text('Impuesto (15.25%):', elemento.x + 2, yPos, { align: 'left' })
-          doc.text(formatCurrency(cotizacion.impuesto || 0), elemento.x + boxWidth - 2, yPos, { align: 'right' })
-          yPos += lineHeight + 2
-          
-          // Línea separadora antes del TOTAL (delgada)
-          doc.setDrawColor(200, 200, 200)
-          doc.setLineWidth(0.5)
-          doc.line(elemento.x, yPos - 2, elemento.x + boxWidth, yPos - 2)
-          yPos += 5 // Más espacio antes del TOTAL
-          
-          // TOTAL (en color personalizado, negrita y más grande)
-          doc.setFont('helvetica', 'bold')
-          doc.setFontSize((elemento.fontSize || 10) + 2)
-          
-          // Convertir color hex a RGB
-          const colorTotal = elemento.colorTotal || '#0284c7'
+          // Función para convertir hex a RGB
           const hexToRgb = (hex) => {
             const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
             return result ? [
               parseInt(result[1], 16),
               parseInt(result[2], 16),
               parseInt(result[3], 16)
-            ] : [2, 132, 199] // Azul por defecto
+            ] : [0, 0, 0]
           }
-          const rgbTotal = hexToRgb(colorTotal)
           
-          doc.setTextColor(...rgbTotal)
-          doc.text('TOTAL:', elemento.x + 2, yPos, { align: 'left' })
-          doc.text(formatCurrency(cotizacion.total || 0), elemento.x + boxWidth - 2, yPos, { align: 'right' })
+          // Renderizar cada línea
+          lineas.forEach((linea, index) => {
+            const esTotal = index === 3
+            const esDescuento = index === 1 // Descuento General es el índice 1
+            const colorRgb = hexToRgb(linea.color || (esTotal ? '#0284c7' : '#000000'))
+            
+            // Configurar fuente y tamaño para el label
+            if (esTotal) {
+              doc.setFont('helvetica', 'bold')
+              doc.setFontSize((elemento.fontSize || 10) + 2)
+            } else {
+              doc.setFont('helvetica', 'normal')
+              doc.setFontSize(elemento.fontSize || 10)
+            }
+            
+            // Configurar color para el label
+            doc.setTextColor(colorRgb[0], colorRgb[1], colorRgb[2])
+            
+            // Renderizar label (texto izquierdo)
+            doc.text(linea.label, elemento.x + 2, yPos, { align: 'left' })
+            
+            // Renderizar valor (texto derecho) - siempre en negrita
+            doc.setFont('helvetica', 'bold')
+            // Si es descuento, usar color rojo; si no, usar el color del label
+            if (esDescuento) {
+              doc.setTextColor(220, 38, 38) // Rojo para descuentos
+            } else {
+              doc.setTextColor(colorRgb[0], colorRgb[1], colorRgb[2])
+            }
+            doc.text(valores[index], elemento.x + boxWidth - 2, yPos, { align: 'right' })
+            
+            yPos += lineHeight
+            
+            // Línea separadora antes del TOTAL
+            if (index === 2) {
+              yPos += 2
+              doc.setDrawColor(200, 200, 200)
+              doc.setLineWidth(0.5)
+              doc.line(elemento.x, yPos - 2, elemento.x + boxWidth, yPos - 2)
+              yPos += 5
+            }
+          })
+          
+          // Restaurar valores por defecto
           doc.setTextColor(0, 0, 0)
           doc.setFont('helvetica', 'normal')
+          doc.setFontSize(elemento.fontSize || 10)
           
           // NO dibujar borde del cuadro - solo líneas horizontales
         }
@@ -5033,7 +5603,7 @@ const ModalDetallesCotizacion = ({ cotizacion, onClose, formatCurrency, formatDa
     if (configuracionPDF.mostrarLogo !== false) {
       doc.setFontSize((configuracionPDF.tamanoFuenteTitulo || 20) * 0.6)
       doc.setFont('helvetica', 'normal')
-      doc.text('Cubic - Sistema de Gestión', pageWidth / 2, 25, { align: 'center' })
+      doc.text('Qubit - Sistema de Gestión', pageWidth / 2, 25, { align: 'center' })
     }
     
     yPos = 50
@@ -5539,7 +6109,8 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
     correoElectronico: '',
     grupo: 'GENERAL',
     estadoSistema: 'ACTIVO',
-    referencia: ''
+    referencia: '',
+    regimen: ''
   })
   const [mostrarMas, setMostrarMas] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -5579,7 +6150,8 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
         correoElectronico: formData.correoElectronico,
         grupo: formData.grupo,
         estadoSistema: formData.estadoSistema,
-        referencia: formData.referencia
+        referencia: formData.referencia,
+        regimen: tipoCliente === 'empresa' ? formData.regimen : ''
       }
       
       await onSave(clienteData)
@@ -5606,7 +6178,13 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
         <div className="p-6 space-y-6">
           <div className="flex gap-4 border-b border-gray-200 pb-4">
             <button
-              onClick={() => setTipoCliente('persona')}
+              onClick={() => {
+                setTipoCliente('persona')
+                // Resetear tipo de documento a DNI cuando se cambia a persona si no es DNI ni CE
+                if (formData.tipoDocumento !== 'DNI' && formData.tipoDocumento !== 'CE') {
+                  handleInputChange('tipoDocumento', 'DNI')
+                }
+              }}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 tipoCliente === 'persona'
                   ? 'bg-primary-600 text-white'
@@ -5616,14 +6194,20 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
               Persona
             </button>
             <button
-              onClick={() => setTipoCliente('empresa')}
+              onClick={() => {
+                setTipoCliente('empresa')
+                // Resetear tipo de documento a RUC cuando se cambia a empresa
+                if (formData.tipoDocumento !== 'RUC') {
+                  handleInputChange('tipoDocumento', 'RUC')
+                }
+              }}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 tipoCliente === 'empresa'
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Empresa (RUC) / Persona con Negocio (RUS)
+              Empresa/ Persona con Negocio (RUC)
             </button>
           </div>
 
@@ -5638,10 +6222,14 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
                   onChange={(e) => handleInputChange('tipoDocumento', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="DNI">DNI</option>
-                  <option value="CE">CE</option>
-                  <option value="RUC">RUC</option>
-                  <option value="RUS">RUS</option>
+                  {tipoCliente === 'persona' ? (
+                    <>
+                      <option value="DNI">DNI</option>
+                      <option value="CE">CE</option>
+                    </>
+                  ) : (
+                    <option value="RUC">RUC</option>
+                  )}
                 </select>
               </div>
 
@@ -5659,18 +6247,36 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
                   />
                 </div>
               ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Razón Social *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.razonSocial}
-                    onChange={(e) => handleInputChange('razonSocial', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Ingrese razón social"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Razón Social *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.razonSocial}
+                      onChange={(e) => handleInputChange('razonSocial', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Ingrese razón social"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Régimen
+                    </label>
+                    <select
+                      value={formData.regimen}
+                      onChange={(e) => handleInputChange('regimen', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Seleccione régimen</option>
+                      <option value="Nuevo RUS (Régimen Único Simplificado)">Nuevo RUS (Régimen Único Simplificado)</option>
+                      <option value="RER (Régimen Especial de Renta)">RER (Régimen Especial de Renta)</option>
+                      <option value="RMT (Régimen MYPE Tributario)">RMT (Régimen MYPE Tributario)</option>
+                      <option value="Régimen General">Régimen General</option>
+                    </select>
+                  </div>
+                </>
               )}
 
               <div>
