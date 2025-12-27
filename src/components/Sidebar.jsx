@@ -71,6 +71,8 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
     'ventas-comercial': false,
     'ventas-postventa': false
   })
+  
+  const [logoRotation, setLogoRotation] = useState(0)
 
   const menuItems = [
     // 0. Dashboard
@@ -534,10 +536,42 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
           {/* Logo y Botón Hamburger */}
           <div className="flex items-center justify-between p-6 border-b border-primary-600">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-primary-700 font-bold text-xl">C</span>
+              <div 
+                className="w-10 h-10 bg-white logo-container rounded-lg flex items-center justify-center overflow-hidden cursor-pointer transition-transform duration-300 hover:scale-110"
+                onClick={() => setLogoRotation(prev => prev + 360)}
+                title="Haz clic para girar"
+              >
+                <svg 
+                  version="1.0" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="40" 
+                  height="40" 
+                  viewBox="0 0 512 512"
+                  preserveAspectRatio="xMidYMid meet"
+                  className="text-primary-700 transition-transform duration-700 ease-in-out"
+                  style={{ transform: `rotate(${logoRotation}deg)` }}
+                >
+                  <g 
+                    transform="translate(0,512) scale(0.1,-0.1)"
+                    fill="currentColor" 
+                    stroke="none"
+                  >
+                    <path d="M2540 4233 c-8 -3 -103 -57 -210 -118 -107 -62 -409 -235 -670 -384
+-261 -150 -485 -283 -497 -297 l-23 -25 0 -823 c0 -770 1 -825 17 -845 10 -11
+122 -80 248 -154 1081 -628 1135 -659 1163 -655 33 5 1370 781 1395 810 16 19
+17 74 17 840 0 550 -3 826 -10 839 -14 26 0 18 -705 421 -572 328 -699 399
+-707 397 -2 0 -10 -3 -18 -6z m505 -493 c242 -140 486 -280 543 -313 57 -33
+100 -63 95 -67 -15 -15 -1112 -640 -1123 -640 -11 0 -1107 625 -1123 640 -5 4
+166 108 380 231 213 122 469 269 567 326 163 94 181 102 200 90 12 -8 219
+-128 461 -267z m-1434 -712 c145 -83 395 -227 554 -319 l290 -168 3 -666 c1
+-366 0 -665 -2 -665 -2 0 -201 114 -442 253 -242 139 -491 283 -554 319 l-115
+66 -3 666 c-1 366 0 666 2 666 2 0 122 -68 267 -152z m2169 -512 l0 -664 -342
+-198 c-189 -108 -439 -253 -556 -320 -117 -68 -215 -124 -218 -124 -2 0 -3
+300 -2 666 l3 665 555 320 c305 175 556 319 557 319 2 0 3 -299 3 -664z"/>
+                  </g>
+                </svg>
               </div>
-              <span className="text-xl font-bold">Cubic</span>
+              <span className="text-xl font-bold">Qubit</span>
             </div>
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -727,7 +761,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile = false }) => {
           <div className="p-4 border-t border-primary-600">
             <div className="text-primary-200 text-sm">
               <p className="font-medium">Versión 1.0.0</p>
-              <p className="text-xs mt-1">© 2026 Cubic</p>
+              <p className="text-xs mt-1">© 2026 Qubit</p>
             </div>
           </div>
         </div>

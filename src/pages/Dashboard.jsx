@@ -61,7 +61,7 @@ const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick, currentDate 
     <div className="w-full">
       <div className="grid grid-cols-7 gap-1 mb-2">
         {diasSemana.map((dia) => (
-          <div key={dia} className="text-center text-xs font-semibold text-gray-600 py-2">
+          <div key={dia} className="text-center text-xs font-semibold py-2" style={{ color: 'var(--color-text-secondary)' }}>
             {dia}
           </div>
         ))}
@@ -74,6 +74,19 @@ const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick, currentDate 
           const isEnd = isEndDate(day)
           const isFuture = isFutureDate(day)
 
+          const getDayStyle = () => {
+            if (isStart || isEnd) {
+              return { backgroundColor: '#2563eb', color: '#ffffff' }
+            }
+            if (inRange) {
+              return { backgroundColor: 'rgba(59, 130, 246, 0.2)' }
+            }
+            if (!isCurrentMonth || isFuture) {
+              return { color: 'var(--color-text-secondary)', opacity: 0.5 }
+            }
+            return { color: 'var(--color-text)' }
+          }
+
           return (
             <button
               key={idx}
@@ -81,13 +94,11 @@ const CalendarMonth = ({ month, fechaInicio, fechaFin, onDateClick, currentDate 
               disabled={isFuture}
               className={`
                 h-10 text-sm rounded-lg transition-colors
-                ${!isCurrentMonth ? 'text-gray-300' : isFuture ? 'text-gray-300 cursor-not-allowed opacity-50' : 'text-gray-900 hover:bg-gray-100'}
-                ${inRange ? 'bg-blue-100' : ''}
-                ${isStart ? 'bg-blue-600 text-white font-semibold' : ''}
-                ${isEnd ? 'bg-blue-600 text-white font-semibold' : ''}
+                ${isStart || isEnd ? 'font-semibold' : ''}
                 ${isStart && isEnd ? 'rounded-full' : ''}
                 ${isFuture ? 'cursor-not-allowed' : 'cursor-pointer'}
               `}
+              style={getDayStyle()}
             >
               {format(day, 'd')}
             </button>
@@ -645,13 +656,14 @@ const Dashboard = () => {
             setShowCalendar(false)
           }
         }}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" ref={calendarRef} onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--color-surface)' }} ref={calendarRef} onClick={(e) => e.stopPropagation()}>
             <div className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text)' }}>Seleccionar Período</h3>
                 <button
                   onClick={() => setShowCalendar(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="transition-colors"
+                  style={{ color: 'var(--color-text-secondary)' }}
                 >
                   <X size={24} />
                 </button>
@@ -672,11 +684,12 @@ const Dashboard = () => {
                         setTempFechaFin(null)
                         setLastSelectedMonth(null)
                       }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       <ChevronLeft size={20} />
                     </button>
-                    <h4 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                    <h4 className="text-sm font-semibold capitalize" style={{ color: 'var(--color-text)' }}>
                       {format(currentMonthLeft, 'MMMM yyyy', { locale: es })}
                     </h4>
                     <button
@@ -690,7 +703,8 @@ const Dashboard = () => {
                         setTempFechaFin(null)
                         setLastSelectedMonth(null)
                       }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       <ChevronRight size={20} />
                     </button>
@@ -741,11 +755,12 @@ const Dashboard = () => {
                         setTempFechaFin(null)
                         setLastSelectedMonth(null)
                       }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       <ChevronLeft size={20} />
                     </button>
-                    <h4 className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                    <h4 className="text-sm font-semibold capitalize" style={{ color: 'var(--color-text)' }}>
                       {format(currentMonthRight, 'MMMM yyyy', { locale: es })}
                     </h4>
                     <button
@@ -759,7 +774,8 @@ const Dashboard = () => {
                         setTempFechaFin(null)
                         setLastSelectedMonth(null)
                       }}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                     >
                       <ChevronRight size={20} />
                     </button>
@@ -797,14 +813,19 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-3 mt-6 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
                 <button
                   onClick={() => {
                     setTempFechaInicio(null)
                     setTempFechaFin(null)
                     setShowCalendar(false)
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                  className="px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                  style={{ 
+                    border: '1px solid var(--color-border)', 
+                    color: 'var(--color-text)',
+                    backgroundColor: 'var(--color-surface)'
+                  }}
                 >
                   Cancelar
                 </button>

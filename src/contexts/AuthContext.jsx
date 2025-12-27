@@ -57,6 +57,8 @@ export const AuthProvider = ({ children }) => {
     if (username === VALID_USERNAME && password === VALID_PASSWORD) {
       setIsAuthenticated(true)
       localStorage.setItem('cubic_auth', 'true')
+      // Guardar el username para verificar permisos de admin
+      localStorage.setItem('cubic_username', username)
       
       // Asegurar que el companyId esté guardado
       const savedCompanyId = localStorage.getItem('cubic_companyId')
@@ -89,13 +91,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Verificar si el usuario actual es administrador
+  const isAdmin = () => {
+    if (!isAuthenticated) return false
+    const savedUsername = localStorage.getItem('cubic_username') || VALID_USERNAME
+    return savedUsername === VALID_USERNAME
+  }
+
   const value = {
     isAuthenticated,
     companyId,
     loading,
     login,
     logout,
-    updateCompanyId
+    updateCompanyId,
+    isAdmin
   }
 
   return (

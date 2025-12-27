@@ -1,0 +1,137 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        COTIZACIONES - NUEVO BOTÓN                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ANTES (Solo 2 botones):                                                   │
+│  ┌───────────┬──────────┐                                                  │
+│  │  ✏️ Editar │ 🗑️ Borrar │                                                  │
+│  └───────────┴──────────┘                                                  │
+│     Azul        Rojo                                                       │
+│                                                                             │
+│  ─────────────────────────────────────────────────────────────────────     │
+│                                                                             │
+│  DESPUÉS (3 botones):                                                      │
+│  ┌───────────┬──────────┬──────────────┐                                   │
+│  │  ✏️ Editar │ 🗑️ Borrar │ 🛒 Subir Venta│                                  │
+│  └───────────┴──────────┴──────────────┘                                   │
+│     Azul        Rojo        Verde                                          │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                          ESTADOS DEL BOTÓN                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  🟡 PENDIENTE:                                                              │
+│  ┌────────────────┐                                                        │
+│  │ 🛒 Subir Venta │  ← HABILITADO (Verde, clickeable)                      │
+│  └────────────────┘                                                        │
+│                                                                             │
+│  🔴 VENCIDA:                                                                │
+│  ┌────────────────┐                                                        │
+│  │ 🛒 Subir Venta │  ← HABILITADO (Verde, clickeable)                      │
+│  └────────────────┘                                                        │
+│                                                                             │
+│  🟢 APROBADA:                                                               │
+│  ┌────────────────┐                                                        │
+│  │ 🛒 Subir Venta │  ← DESHABILITADO (Gris, no clickeable)                 │
+│  └────────────────┘                                                        │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                       FLUJO DE CONVERSIÓN                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1️⃣ COTIZACIÓN PENDIENTE                                                    │
+│     ┌─────────────────────────────┐                                        │
+│     │ Cliente: Juan Pérez         │                                        │
+│     │ Total: S/ 100.00            │                                        │
+│     │ Estado: 🟡 Pendiente         │                                        │
+│     │ [🛒 Subir Venta] ← Click     │                                        │
+│     └─────────────────────────────┘                                        │
+│                  ↓                                                          │
+│  2️⃣ CONFIRMACIÓN                                                            │
+│     ┌─────────────────────────────┐                                        │
+│     │ ¿Convertir a venta?         │                                        │
+│     │                             │                                        │
+│     │ Cliente: Juan Pérez         │                                        │
+│     │ Total: S/ 100.00            │                                        │
+│     │                             │                                        │
+│     │ [Aceptar]  [Cancelar]       │                                        │
+│     └─────────────────────────────┘                                        │
+│                  ↓                                                          │
+│  3️⃣ PROCESANDO...                                                           │
+│     ┌─────────────────────────────┐                                        │
+│     │ ⚙️ Creando venta...          │                                        │
+│     │ ⚙️ Actualizando cotización...│                                        │
+│     └─────────────────────────────┘                                        │
+│                  ↓                                                          │
+│  4️⃣ COMPLETADO                                                              │
+│     ┌─────────────────────────────┐                                        │
+│     │ ✅ Venta creada              │                                        │
+│     │                             │                                        │
+│     │ Cotización ahora:           │                                        │
+│     │ Estado: 🟢 Aprobada          │                                        │
+│     │                             │                                        │
+│     │ Nueva venta en:             │                                        │
+│     │ 📂 Módulo "Ventas"          │                                        │
+│     └─────────────────────────────┘                                        │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                      DATOS TRANSFERIDOS                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  COTIZACIÓN              →              VENTA                              │
+│  ─────────────────────────────────────────────────────────────             │
+│  Cliente                 →              Cliente                            │
+│  Items (productos)       →              Items (productos)                  │
+│  Subtotal                →              Subtotal                           │
+│  Descuento               →              Descuento                          │
+│  Impuesto                →              Impuesto                           │
+│  ICBPER                  →              ICBPER                             │
+│  Total                   →              Total                              │
+│  Moneda                  →              Moneda                             │
+│  Vendedor                →              Vendedor                           │
+│  Local                   →              Local                              │
+│  Almacén                 →              Almacén                            │
+│  Observaciones           →              Observaciones                      │
+│                                                                             │
+│  NUEVOS EN VENTA:                                                          │
+│  ─────────────────                                                         │
+│  • Fecha: [Fecha actual]                                                   │
+│  • Serie: B001                                                             │
+│  • Número: [Auto-generado]                                                 │
+│  • Método Pago: EFECTIVO                                                   │
+│  • Origen Cotización: [ID cotización] ⭐                                    │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                         EJEMPLO VISUAL                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  TABLA DE COTIZACIONES                                                     │
+│  ┌────────┬────────────┬────────┬────────┬────────────────────────┐       │
+│  │ Fecha  │ Cliente    │ Total  │ Estado │ Acciones               │       │
+│  ├────────┼────────────┼────────┼────────┼────────────────────────┤       │
+│  │15/12/25│ Juan Pérez │S/ 100  │🟡Pend. │[✏️][🗑️][🛒Subir]      │       │
+│  ├────────┼────────────┼────────┼────────┼────────────────────────┤       │
+│  │18/12/25│ María Gzlz │S/ 203  │🟢Aprob.│[✏️][🗑️][🛒Subido]     │       │
+│  ├────────┼────────────┼────────┼────────┼────────────────────────┤       │
+│  │10/12/25│ Carlos Rdz │S/ 120  │🔴Venc. │[✏️][🗑️][🛒Subir]      │       │
+│  └────────┴────────────┴────────┴────────┴────────────────────────┘       │
+│                                                                             │
+│  Nota: El botón 🛒 está deshabilitado en la fila "Aprobada"                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+LEYENDA DE ICONOS:
+─────────────────
+✏️  = Editar cotización
+🗑️  = Eliminar cotización
+🛒 = Subir a venta (NUEVO)
+🟡 = Pendiente
+🟢 = Aprobada
+🔴 = Vencida
+
+COLORES DE BOTONES:
+──────────────────
+Azul  = Editar
+Rojo  = Eliminar
+Verde = Subir a venta (habilitado)
+Gris  = Subir a venta (deshabilitado)

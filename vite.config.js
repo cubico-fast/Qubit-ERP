@@ -7,11 +7,15 @@ import { join } from 'path'
 const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
 const isNetlify = process.env.NETLIFY === 'true'
 const isGitHubPages = process.env.GITHUB_PAGES === 'true' || process.env.GITHUB_ACTIONS || process.env.CI
+const isCapacitor = process.env.CAPACITOR_BUILD === 'true'
 
 // Determinar el base path
 let basePath = '/'
 if (process.env.VITE_BASE_PATH) {
   basePath = process.env.VITE_BASE_PATH
+} else if (isCapacitor) {
+  // Para Capacitor siempre usar raíz
+  basePath = '/'
 } else if (isVercel || isNetlify) {
   // Vercel y Netlify usan raíz
   basePath = '/'
@@ -27,9 +31,11 @@ console.log('🔧 Build config:', {
   isVercel,
   isNetlify,
   isGitHubPages,
+  isCapacitor,
   basePath,
   VERCEL: process.env.VERCEL,
-  VERCEL_ENV: process.env.VERCEL_ENV
+  VERCEL_ENV: process.env.VERCEL_ENV,
+  CAPACITOR_BUILD: process.env.CAPACITOR_BUILD
 })
 
 export default defineConfig({
@@ -39,6 +45,12 @@ export default defineConfig({
     {
       name: 'fix-paths',
       closeBundle() {
+        // Saltar ajustes de rutas si es un build para Capacitor
+        if (isCapacitor) {
+          console.log('📱 Build para Capacitor - omitiendo ajustes de rutas web')
+          return
+        }
+        
         const distPath = join(process.cwd(), 'dist')
         const indexPath = join(distPath, 'index.html')
         const notFoundPath = join(distPath, '404.html')

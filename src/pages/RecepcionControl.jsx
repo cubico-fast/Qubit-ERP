@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Package, Plus, Search, Edit, Trash, X, CheckCircle, XCircle, AlertTriangle, FileSpreadsheet, ZoomIn, ZoomOut } from 'lucide-react'
+import { Package, Plus, Search, Edit, Trash, X, CheckCircle, XCircle, AlertTriangle, FileSpreadsheet } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getRecepciones, saveRecepcion, updateRecepcion, deleteRecepcion, getOrdenesCompra, getProductos, getProveedores, saveProducto, updateProducto } from '../utils/firebaseUtils'
 import { formatDate } from '../utils/dateUtils'
@@ -23,9 +23,6 @@ const RecepcionControl = () => {
   const [proveedorDropdownAbierto, setProveedorDropdownAbierto] = useState(null) // { rowIndex, colKey }
   const [productoDropdownAbierto, setProductoDropdownAbierto] = useState(null) // { rowIndex, busqueda }
   const proveedorContainerRef = useRef(null)
-  const [zoom, setZoom] = useState(100) // Zoom inicial al 100%
-  const pinchStartZoomRef = useRef(100)
-  const [pinchStartDistance, setPinchStartDistance] = useState(null)
   const tablaContainerRef = useRef(null)
 
   // Obtener nombre del usuario actual (por defecto "Admin Usuario")
@@ -320,55 +317,6 @@ const RecepcionControl = () => {
     setProductoDropdownAbierto(null)
   }
 
-  // Funciones de zoom manual
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 10, 200)) // Máximo 200%
-  }
-  
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 10, 50)) // Mínimo 50%
-  }
-  
-  const handleZoomReset = () => {
-    setZoom(100) // Resetear a 100%
-  }
-
-  // Función para calcular distancia entre dos puntos táctiles
-  const getTouchDistance = (touch1, touch2) => {
-    const dx = touch2.clientX - touch1.clientX
-    const dy = touch2.clientY - touch1.clientY
-    return Math.sqrt(dx * dx + dy * dy)
-  }
-
-  // Manejar inicio de zoom con pellizco
-  const handleTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault()
-      const distance = getTouchDistance(e.touches[0], e.touches[1])
-      setPinchStartDistance(distance)
-      pinchStartZoomRef.current = zoom
-    }
-  }
-
-  // Manejar zoom con pellizco durante el movimiento
-  const handleTouchMove = (e) => {
-    if (e.touches.length === 2 && pinchStartDistance !== null) {
-      e.preventDefault()
-      const distance = getTouchDistance(e.touches[0], e.touches[1])
-      const scale = distance / pinchStartDistance
-      const newZoom = Math.round(pinchStartZoomRef.current * scale)
-      // Limitar zoom entre 50% y 200%
-      const clampedZoom = Math.max(50, Math.min(200, newZoom))
-      setZoom(clampedZoom)
-    }
-  }
-
-  // Manejar fin de zoom con pellizco
-  const handleTouchEnd = (e) => {
-    if (e.touches.length < 2) {
-      setPinchStartDistance(null)
-    }
-  }
 
   const actualizarCelda = (rowIndex, colKey, value) => {
     // No permitir editar el responsable ni el estado (se calcula automáticamente)
@@ -924,36 +872,6 @@ const RecepcionControl = () => {
                   Hoja de Recepción
                 </h2>
                 <div className="flex items-center gap-2">
-                  {/* Controles de zoom */}
-                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1" style={{ backgroundColor: 'var(--color-background)' }}>
-                    <button
-                      onClick={handleZoomOut}
-                      className="p-1.5 hover:bg-gray-200 rounded transition-colors"
-                      title="Alejar"
-                      style={{ color: 'var(--color-text)' }}
-                    >
-                      <ZoomOut size={18} />
-                    </button>
-                    <span className="px-2 text-sm font-medium min-w-[50px] text-center" style={{ color: 'var(--color-text)' }}>
-                      {zoom}%
-                    </span>
-                    <button
-                      onClick={handleZoomIn}
-                      className="p-1.5 hover:bg-gray-200 rounded transition-colors"
-                      title="Acercar"
-                      style={{ color: 'var(--color-text)' }}
-                    >
-                      <ZoomIn size={18} />
-                    </button>
-                    <button
-                      onClick={handleZoomReset}
-                      className="px-2 py-1 text-xs hover:bg-gray-200 rounded transition-colors ml-1"
-                      title="Resetear zoom"
-                      style={{ color: 'var(--color-text)' }}
-                    >
-                      Reset
-                    </button>
-                  </div>
                   <button onClick={() => setShowHojaRegistro(false)} className="text-gray-400 hover:text-gray-600">
                     <X size={24} />
                   </button>
@@ -964,20 +882,10 @@ const RecepcionControl = () => {
                 ref={tablaContainerRef}
                 className="overflow-x-auto overflow-y-auto h-full" 
                 style={{ 
-                  maxHeight: 'calc(90vh - 180px)',
-                  touchAction: 'pan-x pan-y pinch-zoom'
+                  maxHeight: 'calc(90vh - 180px)'
                 }}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
               >
-                <div 
-                  style={{ 
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: 'top left',
-                    transition: 'transform 0.1s ease-out'
-                  }}
-                >
+                <div>
                   <table className="border-collapse" style={{ fontFamily: 'Arial, sans-serif', fontSize: '13px', minWidth: '100%', width: 'max-content' }}>
                   <thead className="hoja-recepcion-thead" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--hoja-recepcion-header-bg, #f3f4f6)' }}>
                     <tr>

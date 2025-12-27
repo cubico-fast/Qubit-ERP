@@ -271,8 +271,8 @@ const Reportes = () => {
             <div key={index} className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">{metrica.titulo}</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrica.valor}</p>
+                  <p className="text-sm mb-1" style={{ color: 'var(--color-text-secondary)' }}>{metrica.titulo}</p>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{metrica.valor}</p>
                   <p className="text-sm text-green-600 mt-1">{metrica.cambio}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${metrica.bgColor}`}>
@@ -450,22 +450,22 @@ const Reportes = () => {
 
       {/* Resumen de Actividades */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen de Actividades</h3>
+        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>Resumen de Actividades</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-4 bg-primary-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Llamadas Realizadas</p>
-            <p className="text-2xl font-bold text-primary-700">156</p>
-            <p className="text-xs text-gray-500 mt-1">+12% vs mes anterior</p>
+          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <p className="text-sm mb-1 font-medium" style={{ color: 'var(--color-text)' }}>Llamadas Realizadas</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--color-primary-600)' }}>156</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>+12% vs mes anterior</p>
           </div>
-          <div className="p-4 bg-secondary-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Reuniones Programadas</p>
-            <p className="text-2xl font-bold text-secondary-700">42</p>
-            <p className="text-xs text-gray-500 mt-1">+8% vs mes anterior</p>
+          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <p className="text-sm mb-1 font-medium" style={{ color: 'var(--color-text)' }}>Reuniones Programadas</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--color-primary-600)' }}>42</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>+8% vs mes anterior</p>
           </div>
-          <div className="p-4 bg-accent-50 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Emails Enviados</p>
-            <p className="text-2xl font-bold text-accent-700">289</p>
-            <p className="text-xs text-gray-500 mt-1">+15% vs mes anterior</p>
+          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <p className="text-sm mb-1 font-medium" style={{ color: 'var(--color-text)' }}>Emails Enviados</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--color-primary-600)' }}>289</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>+15% vs mes anterior</p>
           </div>
         </div>
       </div>

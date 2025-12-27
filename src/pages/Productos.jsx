@@ -63,7 +63,10 @@ const Productos = () => {
     cualidad: 'MEDIBLE',
     afectacionImpuesto: 'GRAVABLE',
     productoBolsaICBPER: 'No',
-    trabajaTallaColor: 'Si'
+    trabajaTallaColor: 'Si',
+    garantiaMeses: 12,
+    garantiaDescripcion: '',
+    garantiaAcciones: ['reparar'] // Array de acciones: reparar, cambiar, reembolsar
   })
   
   // Definir todas las columnas disponibles
@@ -225,6 +228,12 @@ const Productos = () => {
     e.preventDefault()
     if (!newProduct.nombre.trim()) {
       alert('El nombre del producto es requerido')
+      return
+    }
+
+    // Validar que al menos se haya seleccionado una acción de garantía
+    if (!newProduct.garantiaAcciones || newProduct.garantiaAcciones.length === 0) {
+      alert('Por favor selecciona al menos una acción de garantía')
       return
     }
 
@@ -431,7 +440,10 @@ const Productos = () => {
       cualidad: 'MEDIBLE',
       afectacionImpuesto: 'GRAVABLE',
       productoBolsaICBPER: 'No',
-      trabajaTallaColor: 'Si'
+      trabajaTallaColor: 'Si',
+      garantiaMeses: 12,
+      garantiaDescripcion: '',
+      garantiaAcciones: ['reparar']
     })
     setShowMoreFields(false)
     setActiveTab('general')
@@ -478,7 +490,10 @@ const Productos = () => {
       cualidad: producto.cualidad || 'MEDIBLE',
       afectacionImpuesto: producto.afectacionImpuesto || 'GRAVABLE',
       productoBolsaICBPER: producto.productoBolsaICBPER || 'No',
-      trabajaTallaColor: producto.trabajaTallaColor || 'Si'
+      trabajaTallaColor: producto.trabajaTallaColor || 'Si',
+      garantiaMeses: producto.garantiaMeses || 12,
+      garantiaDescripcion: producto.garantiaDescripcion || '',
+      garantiaAcciones: producto.garantiaAcciones || (producto.garantiaAccion ? [producto.garantiaAccion] : ['reparar'])
     })
     setEditingProductId(producto.id)
     setShowNewProductModal(true)
@@ -1505,6 +1520,17 @@ const Productos = () => {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setActiveTab('garantia')}
+                  className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === 'garantia'
+                      ? 'border-primary-600 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Garantía
+                </button>
+                <button
+                  type="button"
                   onClick={() => setActiveTab('imagenes')}
                   className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                     activeTab === 'imagenes'
@@ -2064,6 +2090,144 @@ const Productos = () => {
                       <option value="Si">Si</option>
                       <option value="No">No</option>
                     </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Garantía */}
+              {activeTab === 'garantia' && (
+                <div className="space-y-6">
+                  {/* Plazo de garantía en meses */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Plazo de Garantía (meses):
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        name="garantiaMeses"
+                        value={newProduct.garantiaMeses}
+                        onChange={handleInputChange}
+                        min="0"
+                        step="1"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="12"
+                      />
+                      <span className="text-sm text-gray-500">meses</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tiempo de garantía que se aplicará automáticamente al vender este producto
+                    </p>
+                  </div>
+
+                  {/* Descripción de garantía */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Descripción de la Garantía:
+                    </label>
+                    <textarea
+                      name="garantiaDescripcion"
+                      value={newProduct.garantiaDescripcion}
+                      onChange={handleInputChange}
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Ej: Garantía de 12 meses contra defectos de fabricación. No cubre daños por mal uso..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Describe los términos y condiciones de la garantía para este producto
+                    </p>
+                  </div>
+
+                  {/* Acciones de garantía */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Acciones de Garantía:
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newProduct.garantiaAcciones?.includes('reparar') || false}
+                          onChange={(e) => {
+                            const acciones = newProduct.garantiaAcciones || []
+                            if (e.target.checked) {
+                              setNewProduct(prev => ({
+                                ...prev,
+                                garantiaAcciones: [...acciones, 'reparar']
+                              }))
+                            } else {
+                              setNewProduct(prev => ({
+                                ...prev,
+                                garantiaAcciones: acciones.filter(a => a !== 'reparar')
+                              }))
+                            }
+                          }}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">Reparar</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newProduct.garantiaAcciones?.includes('cambiar') || false}
+                          onChange={(e) => {
+                            const acciones = newProduct.garantiaAcciones || []
+                            if (e.target.checked) {
+                              setNewProduct(prev => ({
+                                ...prev,
+                                garantiaAcciones: [...acciones, 'cambiar']
+                              }))
+                            } else {
+                              setNewProduct(prev => ({
+                                ...prev,
+                                garantiaAcciones: acciones.filter(a => a !== 'cambiar')
+                              }))
+                            }
+                          }}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">Cambiar</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newProduct.garantiaAcciones?.includes('reembolsar') || false}
+                          onChange={(e) => {
+                            const acciones = newProduct.garantiaAcciones || []
+                            if (e.target.checked) {
+                              setNewProduct(prev => ({
+                                ...prev,
+                                garantiaAcciones: [...acciones, 'reembolsar']
+                              }))
+                            } else {
+                              setNewProduct(prev => ({
+                                ...prev,
+                                garantiaAcciones: acciones.filter(a => a !== 'reembolsar')
+                              }))
+                            }
+                          }}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">Reembolsar</span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Selecciona una o más acciones que estarán disponibles cuando se active la garantía de este producto
+                    </p>
+                  </div>
+
+                  {/* Información adicional */}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info size={20} className="text-blue-600 mt-0.5" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">Información sobre Garantías</p>
+                        <p className="text-blue-700">
+                          La garantía se aplicará automáticamente cuando se registre una venta de este producto. 
+                          El plazo se calculará desde la fecha de venta y podrás gestionarla desde el módulo de Garantías.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

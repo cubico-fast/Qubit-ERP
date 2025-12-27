@@ -1,0 +1,224 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // FUNCIONES HELPER
+    // ============================================
+    
+    // Función helper para obtener el companyId del usuario desde custom claims
+    function getUserCompanyId() {
+      return request.auth != null && request.auth.token.companyId != null 
+        ? request.auth.token.companyId 
+        : null;
+    }
+    
+    // Función helper para verificar si el usuario es administrador
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Función helper para verificar que el documento pertenece a la empresa del usuario
+    function belongsToUserCompany(companyId) {
+      return request.auth != null && 
+             companyId != null && 
+             companyId == getUserCompanyId();
+    }
+    
+    // Función helper para verificar acceso (propio companyId o admin)
+    function canAccessCompany(companyId) {
+      return isAdmin() || belongsToUserCompany(companyId);
+    }
+    
+    // Función helper para obtener el businessId del usuario desde la colección users
+    function getUserBusinessId() {
+      return request.auth != null 
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.businessId
+        : null;
+    }
+    
+    // ============================================
+    // REGLAS PARA TU ERP EXISTENTE
+    // ============================================
+    
+    // Reglas para la colección companies
+    match /companies/{companyId} {
+      allow read: if request.auth != null && canAccessCompany(companyId);
+      allow create, update: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // Reglas para productos - Multi-tenant
+    match /productos/{productoId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para ventas - Multi-tenant
+    match /ventas/{ventaId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para cotizaciones - Multi-tenant
+    match /cotizaciones/{cotizacionId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para clientes - Multi-tenant
+    match /clientes/{clienteId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId() &&
+                         request.resource.data.companyId == resource.data.companyId));
+      allow delete: if request.auth != null && 
+                       (isAdmin() || 
+                        (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para usuarios
+    match /users/{userId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || request.auth.uid == userId);
+      allow create, update: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && isAdmin();
+      // También permitir que el usuario actualice su propio perfil (para businessId)
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Reglas para tokens de Meta (SEGURIDAD CRÍTICA)
+    match /marketing_tokens/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if userId == 'anonymous';
+    }
+    
+    // Reglas para configuración de Meta
+    match /marketing_config/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if userId == 'anonymous';
+    }
+    
+    // Reglas para métricas de marketing - Multi-tenant
+    match /marketing_metricas/{metricaId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update, delete: if request.auth != null && 
+                                (isAdmin() || 
+                                 (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para unidades de medida - Multi-tenant
+    match /unidades_medida/{unidadId} {
+      allow read: if request.auth != null && 
+                     (isAdmin() || 
+                      (resource != null && resource.data.companyId == getUserCompanyId()));
+      allow create: if request.auth != null && 
+                       (isAdmin() || 
+                        (request.resource.data.companyId == getUserCompanyId() && 
+                         request.resource.data.companyId != null));
+      allow update, delete: if request.auth != null && 
+                                (isAdmin() || 
+                                 (resource != null && resource.data.companyId == getUserCompanyId()));
+    }
+    
+    // Reglas para configuración de correo
+    match /emailConfig/{configId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // ============================================
+    // REGLAS PARA KANBAN CRM
+    // ============================================
+    
+    // Regla para negocios y sus subcolecciones (Kanban CRM)
+    // Compatible con tu sistema: usa companyId o businessId
+    match /businesses/{businessId} {
+      // Verificar que el usuario pertenece a este negocio
+      // Opción 1: Si el businessId coincide con el companyId del token
+      allow read, write: if request.auth != null 
+        && getUserCompanyId() == businessId;
+      
+      // Opción 2: Si el usuario tiene businessId en su documento
+      allow read, write: if request.auth != null 
+        && getUserBusinessId() == businessId;
+      
+      // Subcolecciones de Kanban CRM
+      match /kanban_groups/{groupId} {
+        allow read, write: if request.auth != null 
+          && (getUserCompanyId() == businessId || getUserBusinessId() == businessId);
+      }
+      
+      match /kanban_columns/{columnId} {
+        allow read, write: if request.auth != null 
+          && (getUserCompanyId() == businessId || getUserBusinessId() == businessId);
+      }
+      
+      match /kanban_conversations/{conversationId} {
+        allow read, write: if request.auth != null 
+          && (getUserCompanyId() == businessId || getUserBusinessId() == businessId);
+      }
+      
+      match /kanban_assignments/{groupId}/{document=**} {
+        allow read, write: if request.auth != null 
+          && (getUserCompanyId() == businessId || getUserBusinessId() == businessId);
+      }
+      
+      match /settings/{document=**} {
+        allow read, write: if request.auth != null 
+          && (getUserCompanyId() == businessId || getUserBusinessId() == businessId);
+      }
+    }
+    
+  }
+}

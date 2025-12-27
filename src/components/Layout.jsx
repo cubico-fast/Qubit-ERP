@@ -41,7 +41,7 @@ const Layout = ({ children }) => {
 
   return (
     <div 
-      className="flex h-screen w-full relative overflow-hidden transition-colors duration-300"
+      className="flex h-screen w-full relative overflow-x-hidden transition-colors duration-300"
       style={{ 
         backgroundColor: 'var(--color-background)', 
         width: '100%', 
@@ -65,7 +65,8 @@ const Layout = ({ children }) => {
       {!sidebarOpen && !isDesktop && (
         <button
           onClick={() => setSidebarOpen(true)}
-          className="fixed left-0 top-1/2 transform -translate-y-1/2 z-50 bg-primary-700 text-white p-2 rounded-r-lg hover:bg-primary-800 active:bg-primary-900 transition-colors shadow-lg touch-manipulation"
+          className="fixed left-0 top-1/2 transform -translate-y-1/2 bg-primary-700 text-white p-2 rounded-r-lg hover:bg-primary-800 active:bg-primary-900 transition-colors shadow-lg touch-manipulation"
+          style={{ zIndex: 100 }}
           title="Mostrar menú"
           aria-label="Abrir menú"
         >
@@ -74,19 +75,22 @@ const Layout = ({ children }) => {
       )}
       
       <div 
-        className="flex-1 flex flex-col overflow-hidden min-w-0"
+        className="flex-1 flex flex-col min-w-0"
         style={{ 
           width: '100%',
           maxWidth: '100%', 
           minWidth: 0,
           flex: '1 1 100%',
           marginLeft: 0,
-          marginRight: 0
+          marginRight: 0,
+          overflow: 'visible'
         }}
       >
-        <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        <div style={{ position: 'relative', zIndex: 10, overflow: 'visible' }}>
+          <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        </div>
         <main 
-          className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 lg:p-6 w-full" 
+          className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 md:p-4 lg:p-6 w-full" 
           style={{ 
             width: '100%', 
             maxWidth: '100%', 

@@ -23,16 +23,16 @@ const ThemeSelector = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:bg-opacity-80"
+        className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-2 md:px-3 lg:px-4 py-1 sm:py-1.5 md:py-2 rounded-lg transition-colors hover:bg-opacity-80 flex-shrink-0"
         style={{
           backgroundColor: `var(--color-primary-600)`,
           color: 'white'
         }}
         title="Cambiar tema"
       >
-        <Palette size={18} />
-        <span className="hidden sm:inline font-medium">{theme.name}</span>
-        <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <Palette size={12} className="sm:w-4 sm:h-4 md:w-[18px] md:h-[18px]" />
+        <span className="hidden md:inline font-medium text-xs md:text-sm">{theme.name}</span>
+        <ChevronDown size={10} className={`sm:w-3 sm:h-3 md:w-4 md:h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -80,8 +80,8 @@ const ThemeSelector = () => {
                   <div
                     className="w-5 h-5 rounded-full border-2 flex-shrink-0"
                     style={{
-                      backgroundColor: themeOption.colors.primary[500],
-                      borderColor: themeOption.colors.primary[700]
+                      backgroundColor: key === 'dark' ? '#000000' : themeOption.colors.primary[500],
+                      borderColor: key === 'dark' ? '#ca8a04' : themeOption.colors.primary[700]
                     }}
                   />
                   <div className="text-left">

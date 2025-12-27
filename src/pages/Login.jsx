@@ -62,7 +62,7 @@ const Login = () => {
             <Lock className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Cubic
+            Qubit
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Sistema de Gestión
@@ -151,7 +151,7 @@ const Login = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>© 2024 Cubic. Todos los derechos reservados.</p>
+          <p>© 2024 Qubit. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

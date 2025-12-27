@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, RotateCcw, X, Plus, Search, FileText, DollarSign, Calendar, User, ShoppingCart, CheckSquare, Square, ChevronLeft, ChevronRight, GripVertical, Edit, UserPlus } from 'lucide-react'
+import { Save, RotateCcw, X, Plus, Search, FileText, DollarSign, Calendar, User, ShoppingCart, CheckSquare, Square, ChevronLeft, ChevronRight, GripVertical, Edit, UserPlus, Scan, Image } from 'lucide-react'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getCurrentDateSync, formatDate, getNetworkTime } from '../utils/dateUtils'
@@ -24,6 +24,7 @@ const RealizarVenta = () => {
   const [indiceSeleccionadoCliente, setIndiceSeleccionadoCliente] = useState(-1)
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false)
+  const [showOCRModal, setShowOCRModal] = useState(false)
   const busquedaClienteRef = useRef(null)
   
   // Estado para el buscador de productos
@@ -1574,6 +1575,14 @@ const RealizarVenta = () => {
       <div className="fixed bottom-0 left-0 right-0 border-t px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3" style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <button
+            onClick={() => setShowOCRModal(true)}
+            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+            title="Lector de Imagen OCR - Extraer datos de venta desde imágenes"
+          >
+            <Scan size={18} />
+            LECTOR DE IMAGEN
+          </button>
+          <button
             onClick={handleGuardar}
             className="w-full sm:w-auto px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
             title="Guardar la venta en el registro (F6)"
@@ -1624,6 +1633,37 @@ const RealizarVenta = () => {
           }}
         />
       )}
+
+      {/* Modal de Lector de Imagen OCR */}
+      {showOCRModal && (
+        <ModalOCR
+          onClose={() => setShowOCRModal(false)}
+          onProcess={(datosExtraidos) => {
+            // Procesar datos extraídos del OCR para la venta
+            console.log('Datos extraídos del OCR:', datosExtraidos)
+            
+            // Si hay cliente en los datos, buscarlo y seleccionarlo
+            if (datosExtraidos.cliente) {
+              const clienteEncontrado = clientes.find(c => 
+                c.nombre?.toLowerCase().includes(datosExtraidos.cliente.toLowerCase()) ||
+                c.nombres?.toLowerCase().includes(datosExtraidos.cliente.toLowerCase()) ||
+                c.razonSocial?.toLowerCase().includes(datosExtraidos.cliente.toLowerCase())
+              )
+              if (clienteEncontrado) {
+                handleSeleccionarCliente(clienteEncontrado)
+              }
+            }
+            
+            // Si hay productos, agregarlos a la venta
+            if (datosExtraidos.productos && datosExtraidos.productos.length > 0) {
+              // TODO: Implementar lógica para agregar productos desde OCR
+              alert('✅ Datos extraídos. Los productos se agregarán próximamente.')
+            }
+            
+            setShowOCRModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1643,7 +1683,8 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
     correoElectronico: '',
     grupo: 'GENERAL',
     estadoSistema: 'ACTIVO',
-    referencia: ''
+    referencia: '',
+    regimen: ''
   })
   const [mostrarMas, setMostrarMas] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -1684,7 +1725,8 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
         correoElectronico: formData.correoElectronico,
         grupo: formData.grupo,
         estadoSistema: formData.estadoSistema,
-        referencia: formData.referencia
+        referencia: formData.referencia,
+        regimen: tipoCliente === 'empresa' ? formData.regimen : ''
       }
       
       await onSave(clienteData)
@@ -1714,7 +1756,13 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
           {/* Tipo de Cliente */}
           <div className="flex gap-4 border-b border-gray-200 pb-4">
             <button
-              onClick={() => setTipoCliente('persona')}
+              onClick={() => {
+                setTipoCliente('persona')
+                // Resetear tipo de documento a DNI cuando se cambia a persona si no es DNI ni CE
+                if (formData.tipoDocumento !== 'DNI' && formData.tipoDocumento !== 'CE') {
+                  handleInputChange('tipoDocumento', 'DNI')
+                }
+              }}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 tipoCliente === 'persona'
                   ? 'bg-primary-600 text-white'
@@ -1724,14 +1772,20 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
               Persona
             </button>
             <button
-              onClick={() => setTipoCliente('empresa')}
+              onClick={() => {
+                setTipoCliente('empresa')
+                // Resetear tipo de documento a RUC cuando se cambia a empresa
+                if (formData.tipoDocumento !== 'RUC') {
+                  handleInputChange('tipoDocumento', 'RUC')
+                }
+              }}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 tipoCliente === 'empresa'
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Empresa (RUC) / Persona con Negocio (RUS)
+              Empresa/ Persona con Negocio (RUC)
             </button>
           </div>
 
@@ -1748,10 +1802,14 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
                   onChange={(e) => handleInputChange('tipoDocumento', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="DNI">DNI</option>
-                  <option value="CE">CE</option>
-                  <option value="RUC">RUC</option>
-                  <option value="RUS">RUS</option>
+                  {tipoCliente === 'persona' ? (
+                    <>
+                      <option value="DNI">DNI</option>
+                      <option value="CE">CE</option>
+                    </>
+                  ) : (
+                    <option value="RUC">RUC</option>
+                  )}
                 </select>
               </div>
 
@@ -1771,18 +1829,36 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
                   </div>
                 </>
               ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Razón Social *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.razonSocial}
-                    onChange={(e) => handleInputChange('razonSocial', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Ingrese razón social"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Razón Social *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.razonSocial}
+                      onChange={(e) => handleInputChange('razonSocial', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="Ingrese razón social"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Régimen
+                    </label>
+                    <select
+                      value={formData.regimen}
+                      onChange={(e) => handleInputChange('regimen', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Seleccione régimen</option>
+                      <option value="Nuevo RUS (Régimen Único Simplificado)">Nuevo RUS (Régimen Único Simplificado)</option>
+                      <option value="RER (Régimen Especial de Renta)">RER (Régimen Especial de Renta)</option>
+                      <option value="RMT (Régimen MYPE Tributario)">RMT (Régimen MYPE Tributario)</option>
+                      <option value="Régimen General">Régimen General</option>
+                    </select>
+                  </div>
+                </>
               )}
 
               <div>
@@ -1949,6 +2025,235 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
               </>
             )}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Componente Modal de Lector de Imagen OCR
+const ModalOCR = ({ onClose, onProcess }) => {
+  const [imagen, setImagen] = useState(null)
+  const [imagenPreview, setImagenPreview] = useState(null)
+  const [procesando, setProcesando] = useState(false)
+  const [resultadoOCR, setResultadoOCR] = useState(null)
+  const fileInputRef = useRef(null)
+
+  const handleSeleccionarImagen = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        setImagen(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImagenPreview(reader.result)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        alert('Por favor selecciona un archivo de imagen válido')
+      }
+    }
+  }
+
+  const handleProcesarOCR = async () => {
+    if (!imagen) {
+      alert('Por favor selecciona una imagen primero')
+      return
+    }
+
+    setProcesando(true)
+    try {
+      // TODO: Integrar con servicio de OCR (Tesseract.js, Google Vision API, etc.)
+      // Por ahora, simulamos el procesamiento
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Simulación de datos extraídos
+      const datosSimulados = {
+        cliente: 'Cliente Extraído',
+        fecha: getCurrentDateSync(),
+        productos: [
+          { nombre: 'Producto 1', cantidad: 2, precio: 100 },
+          { nombre: 'Producto 2', cantidad: 1, precio: 200 }
+        ],
+        total: 400
+      }
+      
+      setResultadoOCR(datosSimulados)
+      alert('✅ Imagen procesada exitosamente. Los datos extraídos se mostrarán a continuación.')
+    } catch (error) {
+      console.error('Error al procesar OCR:', error)
+      alert('Error al procesar la imagen. Por favor, intenta nuevamente.')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const handleUsarDatos = () => {
+    if (resultadoOCR) {
+      onProcess(resultadoOCR)
+    }
+  }
+
+  const handleLimpiar = () => {
+    setImagen(null)
+    setImagenPreview(null)
+    setResultadoOCR(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex items-center gap-3">
+            <Scan size={24} style={{ color: 'var(--color-primary-600)' }} />
+            <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+              Lector de Imagen OCR
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Contenido */}
+        <div className="p-6 space-y-6">
+          {/* Instrucciones */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4" style={{ backgroundColor: 'var(--color-primary-50)', borderColor: 'var(--color-primary-200)' }}>
+            <p className="text-sm" style={{ color: 'var(--color-text)' }}>
+              <strong>Instrucciones:</strong> Sube una imagen de una factura o comprobante de venta. El sistema extraerá automáticamente los datos como cliente, productos, precios y totales.
+            </p>
+          </div>
+
+          {/* Selector de imagen */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+              Seleccionar Imagen
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleSeleccionarImagen}
+                className="hidden"
+                id="ocr-image-input-venta"
+              />
+              <label
+                htmlFor="ocr-image-input-venta"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors flex items-center gap-2"
+              >
+                <Image size={18} />
+                Seleccionar Imagen
+              </label>
+              {imagen && (
+                <button
+                  onClick={handleLimpiar}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+                >
+                  <X size={18} />
+                  Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Preview de imagen */}
+          {imagenPreview && (
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                Vista Previa
+              </label>
+              <div className="border rounded-lg p-4 flex justify-center" style={{ borderColor: 'var(--color-border)' }}>
+                <img
+                  src={imagenPreview}
+                  alt="Preview"
+                  className="max-w-full max-h-64 rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Botón de procesar */}
+          {imagen && !resultadoOCR && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleProcesarOCR}
+                disabled={procesando}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {procesando ? (
+                  <>
+                    <RotateCcw size={18} className="animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Scan size={18} />
+                    Procesar Imagen
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Resultado del OCR */}
+          {resultadoOCR && (
+            <div className="border rounded-lg p-4" style={{ borderColor: 'var(--color-border)' }}>
+              <h3 className="font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+                Datos Extraídos:
+              </h3>
+              <div className="space-y-2 text-sm">
+                <p><strong>Cliente:</strong> {resultadoOCR.cliente}</p>
+                <p><strong>Fecha:</strong> {formatDate(resultadoOCR.fecha)}</p>
+                <p><strong>Productos:</strong></p>
+                <ul className="list-disc list-inside ml-4">
+                  {resultadoOCR.productos?.map((p, i) => (
+                    <li key={i}>
+                      {p.nombre} - Cantidad: {p.cantidad} - Precio: S/ {p.precio}
+                    </li>
+                  ))}
+                </ul>
+                <p><strong>Total:</strong> S/ {resultadoOCR.total}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t flex justify-end gap-3" style={{ borderColor: 'var(--color-border)' }}>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            Cancelar
+          </button>
+          {resultadoOCR && (
+            <button
+              onClick={handleUsarDatos}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Usar Datos en la Venta
+            </button>
+          )}
         </div>
       </div>
     </div>

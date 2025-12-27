@@ -40,7 +40,7 @@ export const themes = {
     style: 'modern'
   },
   hacker: {
-    name: 'Hacker',
+    name: 'Code',
     description: 'Estilo terminal con líneas verdes sobre negro',
     colors: {
       primary: {
@@ -64,7 +64,7 @@ export const themes = {
       card: '#000000',
     },
     font: 'Courier New, monospace',
-    style: 'hacker'
+    style: 'code'
   },
   calido: {
     name: 'Cálido',
@@ -93,33 +93,6 @@ export const themes = {
     font: 'Inter, sans-serif',
     style: 'warm'
   },
-  oscuro: {
-    name: 'Oscuro',
-    description: 'Modo oscuro profesional - Solo blanco y grises',
-    colors: {
-      primary: {
-        50: '#f9fafb',
-        100: '#f3f4f6',
-        200: '#e5e7eb',
-        300: '#d1d5db',
-        400: '#9ca3af',
-        500: '#6b7280',
-        600: '#4b5563',
-        700: '#374151',
-        800: '#1f2937',
-        900: '#111827',
-      },
-      background: '#111827',
-      surface: '#1f2937',
-      text: '#ffffff',
-      textSecondary: '#d1d5db',
-      border: '#4b5563',
-      sidebar: 'linear-gradient(to bottom, #1f2937, #111827)',
-      card: '#1f2937',
-    },
-    font: 'Inter, sans-serif',
-    style: 'dark'
-  },
   minimalista: {
     name: 'Minimalista',
     description: 'Diseño limpio y minimalista',
@@ -146,6 +119,87 @@ export const themes = {
     },
     font: 'Inter, sans-serif',
     style: 'minimal'
+  },
+  amarilloGris: {
+    name: 'Amarillo y Gris',
+    description: 'Tema elegante con amarillo dorado y grises neutros',
+    colors: {
+      primary: {
+        50: '#fefce8',
+        100: '#fef9c3',
+        200: '#fef08a',
+        300: '#fde047',
+        400: '#facc15',
+        500: '#eab308',
+        600: '#ca8a04',
+        700: '#a16207',
+        800: '#854d0e',
+        900: '#713f12',
+      },
+      background: '#f9fafb',
+      surface: '#ffffff',
+      text: '#111827',
+      textSecondary: '#6b7280',
+      border: '#e5e7eb',
+      sidebar: 'linear-gradient(to bottom, #ca8a04, #a16207)',
+      card: '#ffffff',
+    },
+    font: 'Inter, sans-serif',
+    style: 'yellow-gray'
+  },
+  dark: {
+    name: 'Dark',
+    description: 'Tema oscuro - Amarillo dorado sobre fondos oscuros',
+    colors: {
+      primary: {
+        50: '#fefce8',
+        100: '#fef9c3',
+        200: '#fef08a',
+        300: '#fde047',
+        400: '#facc15',
+        500: '#eab308',
+        600: '#ca8a04',
+        700: '#a16207',
+        800: '#854d0e',
+        900: '#713f12',
+      },
+      background: '#0d0d0d',
+      surface: '#1a1a1a',
+      text: '#ffffff',
+      textSecondary: '#a3a3a3',
+      border: '#2a2a2a',
+      sidebar: 'linear-gradient(to bottom, #1a1a1a, #0d0d0d)',
+      card: '#1a1a1a',
+    },
+    font: 'Inter, sans-serif',
+    style: 'Dark'
+  },
+  sage: {
+    name: 'Salvia',
+    description: 'Tema natural con verde salvia y tonos tierra',
+    colors: {
+      primary: {
+        50: '#f4f7f5',
+        100: '#e8f0ea',
+        200: '#c9dccf',
+        300: '#a5c4ae',
+        400: '#7ba082',
+        500: '#5a7a5f',
+        600: '#4a6350',
+        700: '#3d5143',
+        800: '#324136',
+        900: '#29362d',
+      },
+      background: '#fafaf7',
+      surface: '#ffffff',
+      text: '#2d3e2f',
+      textSecondary: '#5a6b5d',
+      border: '#d4e0d6',
+      sidebar: 'linear-gradient(to bottom, #5a7a5f, #4a6350)',
+      card: '#ffffff',
+    },
+    font: 'Inter, sans-serif',
+    style: 'sage'
   }
 }
 

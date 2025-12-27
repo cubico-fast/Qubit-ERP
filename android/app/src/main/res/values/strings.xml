@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">cubic-crm</string>
+    <string name="title_activity_main">cubic-crm</string>
+    <string name="package_name">com.CubicOne.app</string>
+    <string name="custom_url_scheme">com.CubicOne.app</string>
+</resources>

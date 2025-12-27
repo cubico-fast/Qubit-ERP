@@ -1602,6 +1602,20 @@ aside.sidebar-gradient * {
   color: #000000 !important;
 }
 
+/* Contenedor del logo en tema Dark - usar color específico */
+.theme-Dark .logo-container.bg-white,
+.theme-Dark .logo-container[class*="bg-white"] {
+  background-color: #ffbb05 !important;
+  color: #000000 !important;
+}
+
+/* Elementos del Dashboard con bg-white en tema Dark */
+.theme-Dark input.bg-white,
+.theme-Dark tbody.bg-white {
+  background-color: #ffbb05 !important;
+  color: #000000 !important;
+}
+
 /* EXCEPCIÓN: El canvas del documento siempre debe ser blanco, sin importar el tema */
 .theme-Dark .canvas-documento,
 .theme-Dark .bg-white.shadow-xl.border-2,

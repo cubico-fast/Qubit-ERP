@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   Building2, 
   Users, 
@@ -14,7 +14,11 @@ import {
   TrendingUp,
   DollarSign,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Shield,
+  Eye,
+  EyeOff,
+  Mail
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { 
@@ -30,9 +34,10 @@ import {
   setUserClaims,
   updateUser
 } from '../utils/adminUtils'
+import { ROLES_LIST, getRoleName, getRoleById } from '../utils/roles'
 
 const AdminPanel = () => {
-  const { companyId, isAuthenticated } = useAuth()
+  const { companyId, isAuthenticated, isAdmin } = useAuth()
   const [activeTab, setActiveTab] = useState('companies')
   const [companies, setCompanies] = useState([])
   const [users, setUsers] = useState([])
@@ -42,6 +47,25 @@ const AdminPanel = () => {
   const [editingCompany, setEditingCompany] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [companyStats, setCompanyStats] = useState({})
+  const [currentCompany, setCurrentCompany] = useState(null)
+  const [editingField, setEditingField] = useState(null) // Campo que se está editando
+  const [editValues, setEditValues] = useState({}) // Valores temporales de edición
+  const [showPassword, setShowPassword] = useState({}) // Estado para mostrar/ocultar contraseñas
+  const [showVerifyPasswordModal, setShowVerifyPasswordModal] = useState(false) // Modal para verificar contraseña
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false) // Modal para cambiar contraseña
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false) // Modal para olvidé mi contraseña
+  const [passwordAction, setPasswordAction] = useState(null) // 'view' o 'edit'
+  const [passwordContext, setPasswordContext] = useState(null) // 'company' o 'user'
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('') // Contraseña actual ingresada
+  const [newPasswordInput, setNewPasswordInput] = useState('') // Nueva contraseña
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('') // Confirmar nueva contraseña
+  const [passwordError, setPasswordError] = useState('') // Error de contraseña
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('') // Email para recuperar contraseña
+  const passwordInputRef = useRef(null) // Referencia para el campo de contraseña del modal
+   
+   // Credenciales del super admin
+  const SUPER_ADMIN_USERNAME = 'DIKSON1212'
+  const SUPER_ADMIN_PASSWORD = 'Dikson@123'
 
   // Formulario de empresa
   const [companyForm, setCompanyForm] = useState({
@@ -61,8 +85,10 @@ const AdminPanel = () => {
   const [userForm, setUserForm] = useState({
     email: '',
     companyId: '',
+    role: 'operativo',
     isAdmin: false,
-    displayName: ''
+    displayName: '',
+    activo: true
   })
 
   useEffect(() => {
@@ -71,16 +97,45 @@ const AdminPanel = () => {
     }
   }, [isAuthenticated, activeTab])
 
+  // Debug: Monitorear cambios en showVerifyPasswordModal
+  useEffect(() => {
+    console.log('showVerifyPasswordModal cambió a:', showVerifyPasswordModal)
+  }, [showVerifyPasswordModal])
+
+  // Enfocar el campo de contraseña cuando se abre el modal
+  useEffect(() => {
+    if (showVerifyPasswordModal && passwordInputRef.current) {
+      // Usar setTimeout para asegurar que el DOM esté listo y evitar que el navegador enfoque otros campos
+      setTimeout(() => {
+        passwordInputRef.current?.focus()
+        // Limpiar cualquier valor previo
+        if (passwordInputRef.current) {
+          passwordInputRef.current.value = ''
+        }
+      }, 150)
+    }
+  }, [showVerifyPasswordModal])
+
   const loadData = async () => {
     setLoading(true)
     try {
       if (activeTab === 'companies') {
         const companiesData = await getAllCompanies()
-        setCompanies(companiesData)
+        console.log('Empresas cargadas:', companiesData)
+        setCompanies(companiesData || [])
+        
+        // Cargar la empresa actual
+        try {
+          const current = await getCompany(companyId)
+          setCurrentCompany(current)
+        } catch (error) {
+          console.error('Error al cargar empresa actual:', error)
+          setCurrentCompany(null)
+        }
         
         // Cargar estadísticas para cada empresa
         const stats = {}
-        for (const company of companiesData) {
+        for (const company of (companiesData || [])) {
           try {
             stats[company.companyId] = await getCompanyStats(company.companyId)
           } catch (error) {
@@ -89,12 +144,35 @@ const AdminPanel = () => {
         }
         setCompanyStats(stats)
       } else if (activeTab === 'users') {
+        console.log('Cargando usuarios...')
         const usersData = await getAllUsers()
-        setUsers(usersData)
+        console.log('Usuarios cargados:', usersData)
+        // Ordenar usuarios: primero los admins, luego por nombre
+        const sortedUsers = (usersData || []).sort((a, b) => {
+          if (a.admin && !b.admin) return -1
+          if (!a.admin && b.admin) return 1
+          const nameA = (a.displayName || a.email || '').toLowerCase()
+          const nameB = (b.displayName || b.email || '').toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
+        console.log('Usuarios ordenados:', sortedUsers)
+        setUsers(sortedUsers)
       }
     } catch (error) {
       console.error('Error al cargar datos:', error)
-      alert('Error al cargar datos: ' + error.message)
+      console.error('Detalles del error:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      })
+      // Mostrar error pero no alert para no interrumpir
+      // alert('Error al cargar datos: ' + error.message)
+      // Inicializar arrays vacíos en caso de error
+      if (activeTab === 'companies') {
+        setCompanies([])
+      } else if (activeTab === 'users') {
+        setUsers([])
+      }
     } finally {
       setLoading(false)
     }
@@ -163,33 +241,193 @@ const AdminPanel = () => {
   }
 
   const handleCreateUser = async () => {
+    // No se permite crear usuarios desde este panel
+    alert('⚠️ La creación de usuarios se realiza desde el panel de Usuarios (/admin/usuarios)')
+    setShowUserModal(false)
+    resetUserForm()
+  }
+
+  // Función para guardar cambios en el nombre de la empresa
+  const handleSaveCompanyName = async (newName) => {
     try {
-      // Nota: La creación real del usuario debe hacerse desde el backend
-      // Esta función solo crea el documento en Firestore
-      // Debes implementar una Cloud Function para crear usuarios
-      alert('⚠️ La creación de usuarios debe hacerse desde el backend. Por ahora solo se actualiza Firestore.')
-      
-      // Aquí deberías llamar a una Cloud Function que cree el usuario
-      // await createUserWithCompany(userForm)
-      
-      setShowUserModal(false)
-      resetUserForm()
-      loadData()
+      if (!currentCompany) {
+        // Si no hay empresa, crear una nueva
+        await createOrUpdateCompany({
+          companyId: companyId,
+          nombre: newName,
+          activa: true,
+          plan: 'gratis',
+          limites: {
+            maxUsuarios: 1,
+            maxVentas: 100,
+            maxProductos: 50
+          }
+        })
+      } else {
+        // Actualizar empresa existente
+        await createOrUpdateCompany({
+          ...currentCompany,
+          nombre: newName
+        })
+      }
+      await loadData()
+      setEditingField(null)
+      setEditValues({})
+      alert('✅ Nombre de empresa actualizado')
     } catch (error) {
-      console.error('Error al crear usuario:', error)
-      alert('Error al crear usuario: ' + error.message)
+      console.error('Error al guardar nombre:', error)
+      alert('Error al guardar: ' + error.message)
     }
+  }
+
+  // Función para verificar contraseña actual
+  const verifyCurrentPassword = (password) => {
+    const storedPassword = localStorage.getItem('cubic_password') || SUPER_ADMIN_PASSWORD
+    return password === storedPassword
+  }
+
+  // Función para manejar ver/editar contraseña
+  const handlePasswordAction = (action, context, event) => {
+    console.log('handlePasswordAction llamado:', { action, context })
+    
+    // Prevenir cualquier comportamiento por defecto del evento
+    if (event) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    
+    // Prevenir cualquier comportamiento por defecto
+    setPasswordAction(action)
+    setPasswordContext(context) // 'company' o 'user'
+    setCurrentPasswordInput('')
+    setPasswordError('')
+    
+    // Limpiar el foco de cualquier otro campo antes de abrir el modal
+    // Especialmente el campo de búsqueda global
+    if (document.activeElement) {
+      document.activeElement.blur()
+    }
+    
+    // Buscar y limpiar el campo de búsqueda global si existe
+    const globalSearchInput = document.getElementById('global-search-input')
+    if (globalSearchInput) {
+      globalSearchInput.blur()
+      // Forzar que el campo pierda el foco y no reciba eventos
+      globalSearchInput.setAttribute('readonly', 'readonly')
+      setTimeout(() => {
+        globalSearchInput.removeAttribute('readonly')
+      }, 500)
+    }
+    
+    // Pequeño delay para asegurar que el DOM esté listo
+    setTimeout(() => {
+      setShowVerifyPasswordModal(true)
+      console.log('showVerifyPasswordModal establecido en true')
+    }, 50)
+  }
+
+  // Función para verificar y proceder con la acción
+  const handleVerifyPassword = () => {
+    console.log('handleVerifyPassword llamado:', { 
+      currentPasswordInput, 
+      passwordAction, 
+      passwordContext 
+    })
+    
+    if (!verifyCurrentPassword(currentPasswordInput)) {
+      console.log('Contraseña incorrecta')
+      setPasswordError('La contraseña actual no es correcta')
+      return
+    }
+    
+    console.log('Contraseña correcta, procediendo...')
+    setPasswordError('')
+    setShowVerifyPasswordModal(false)
+    
+    if (passwordAction === 'view') {
+      // Mostrar contraseña según el contexto (empresa o usuario)
+      if (passwordContext === 'company') {
+        console.log('Mostrando contraseña de empresa')
+        setShowPassword({ ...showPassword, company: true })
+        setTimeout(() => {
+          setShowPassword(prev => ({ ...prev, company: false }))
+        }, 7000) // Ocultar después de 7 segundos
+      } else if (passwordContext === 'user') {
+        console.log('Mostrando contraseña de usuario')
+        setShowPassword(prev => ({ ...prev, user: true }))
+        setTimeout(() => {
+          setShowPassword(prev => ({ ...prev, user: false }))
+        }, 7000) // Ocultar después de 7 segundos
+      }
+    } else if (passwordAction === 'edit') {
+      // Abrir modal para cambiar contraseña
+      console.log('Abriendo modal de cambio de contraseña')
+      setShowChangePasswordModal(true)
+      setNewPasswordInput('')
+      setConfirmPasswordInput('')
+    }
+    
+    setCurrentPasswordInput('')
+  }
+
+  // Función para cambiar contraseña
+  const handleChangePassword = () => {
+    if (!newPasswordInput || newPasswordInput.length < 6) {
+      setPasswordError('La nueva contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    
+    if (newPasswordInput !== confirmPasswordInput) {
+      setPasswordError('Las contraseñas no coinciden')
+      return
+    }
+    
+    // Guardar nueva contraseña
+    localStorage.setItem('cubic_password', newPasswordInput)
+    setShowChangePasswordModal(false)
+    setNewPasswordInput('')
+    setConfirmPasswordInput('')
+    setPasswordError('')
+    alert('✅ Contraseña actualizada exitosamente')
+  }
+
+  // Función para enviar contraseña por correo
+  const handleForgotPassword = () => {
+    if (!forgotPasswordEmail || !forgotPasswordEmail.includes('@')) {
+      setPasswordError('Por favor ingresa un correo electrónico válido')
+      return
+    }
+    
+    // Aquí deberías integrar con un servicio de email
+    // Por ahora solo mostramos un mensaje
+    const storedPassword = localStorage.getItem('cubic_password') || SUPER_ADMIN_PASSWORD
+    alert(`✅ Se ha enviado un correo a ${forgotPasswordEmail} con la contraseña actual.\n\nContraseña: ${storedPassword}\n\n(En producción, esto se enviaría automáticamente por correo)`)
+    setShowForgotPasswordModal(false)
+    setForgotPasswordEmail('')
+    setPasswordError('')
   }
 
   const handleUpdateUser = async () => {
     if (!editingUser) return
 
+    // Verificar permisos de administrador
+    if (!isAdmin()) {
+      alert('❌ Solo los administradores pueden actualizar usuarios')
+      return
+    }
+
     try {
+      const isUserAdmin = userForm.role === 'admin' || userForm.isAdmin
+      
       await updateUser(editingUser.id, {
         companyId: userForm.companyId,
-        isAdmin: userForm.isAdmin,
-        displayName: userForm.displayName
+        role: userForm.role,
+        isAdmin: isUserAdmin,
+        displayName: userForm.displayName,
+        activo: userForm.activo,
+        uid: editingUser.uid || editingUser.userId
       })
+      
       alert('✅ Usuario actualizado exitosamente')
       setShowUserModal(false)
       setEditingUser(null)
@@ -202,12 +440,20 @@ const AdminPanel = () => {
   }
 
   const handleEditUser = (user) => {
+    // Verificar permisos de administrador
+    if (!isAdmin()) {
+      alert('❌ Solo los administradores pueden editar usuarios')
+      return
+    }
+    
     setEditingUser(user)
     setUserForm({
       email: user.email || '',
       companyId: user.companyId || '',
+      role: user.role || 'operativo',
       isAdmin: user.admin || false,
-      displayName: user.displayName || ''
+      displayName: user.displayName || '',
+      activo: user.activo !== undefined ? user.activo : true
     })
     setShowUserModal(true)
   }
@@ -231,8 +477,10 @@ const AdminPanel = () => {
     setUserForm({
       email: '',
       companyId: '',
+      role: 'operativo',
       isAdmin: false,
-      displayName: ''
+      displayName: '',
+      activo: true
     })
   }
 
@@ -245,6 +493,7 @@ const AdminPanel = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen p-6" style={{ backgroundColor: 'var(--color-background)' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -308,6 +557,220 @@ const AdminPanel = () => {
                     <Plus size={18} />
                     Nueva Empresa
                   </button>
+                </div>
+
+                {/* Información de la Empresa Actual */}
+                <div className="mb-6 p-4 border rounded-lg" style={{ 
+                  backgroundColor: 'var(--color-surface)', 
+                  borderColor: 'var(--color-border)' 
+                }}>
+                  <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+                    Información de la Empresa
+                  </h3>
+                  <div className="space-y-4">
+                    {/* Nombre de la empresa - Editable */}
+                    <div>
+                      <label className="text-sm font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Nombre de la empresa:
+                      </label>
+                      {editingField === 'companyName' ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="text"
+                            value={editValues.companyName !== undefined ? editValues.companyName : (currentCompany?.nombre || '')}
+                            onChange={(e) => setEditValues({ ...editValues, companyName: e.target.value })}
+                            className="flex-1 px-3 py-2 border rounded-lg"
+                            style={{ 
+                              borderColor: 'var(--color-border)', 
+                              backgroundColor: 'var(--color-surface)', 
+                              color: 'var(--color-text)' 
+                            }}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveCompanyName(editValues.companyName || '')
+                              } else if (e.key === 'Escape') {
+                                setEditingField(null)
+                                setEditValues({})
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => handleSaveCompanyName(editValues.companyName || '')}
+                            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingField(null)
+                              setEditValues({})
+                            }}
+                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="flex items-center gap-2 mt-1 group cursor-pointer hover:bg-opacity-5 rounded p-1 -ml-1"
+                          onClick={() => {
+                            setEditingField('companyName')
+                            setEditValues({ companyName: currentCompany?.nombre || '' })
+                          }}
+                        >
+                          <p className="text-base font-medium flex-1" style={{ color: 'var(--color-text)' }}>
+                            {currentCompany?.nombre || 'No hay un nombre de empresa registrada'}
+                          </p>
+                          <Edit size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: 'var(--color-text-secondary)' }} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Usuario - Editable */}
+                    <div>
+                      <label className="text-sm font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Usuario:
+                      </label>
+                      {editingField === 'username' ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="text"
+                            value={editValues.username !== undefined ? editValues.username : SUPER_ADMIN_USERNAME}
+                            onChange={(e) => setEditValues({ ...editValues, username: e.target.value })}
+                            className="flex-1 px-3 py-2 border rounded-lg"
+                            style={{ 
+                              borderColor: 'var(--color-border)', 
+                              backgroundColor: 'var(--color-surface)', 
+                              color: 'var(--color-text)' 
+                            }}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                // Guardar el nuevo username (solo en localStorage por ahora)
+                                localStorage.setItem('cubic_username', editValues.username)
+                                setEditingField(null)
+                                setEditValues({})
+                                alert('✅ Usuario actualizado (requiere reiniciar sesión para aplicar cambios)')
+                              } else if (e.key === 'Escape') {
+                                setEditingField(null)
+                                setEditValues({})
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('cubic_username', editValues.username)
+                              setEditingField(null)
+                              setEditValues({})
+                              alert('✅ Usuario actualizado (requiere reiniciar sesión para aplicar cambios)')
+                            }}
+                            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingField(null)
+                              setEditValues({})
+                            }}
+                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="flex items-center gap-2 mt-1 group cursor-pointer hover:bg-opacity-5 rounded p-1 -ml-1"
+                          onClick={() => {
+                            setEditingField('username')
+                            setEditValues({ username: SUPER_ADMIN_USERNAME })
+                          }}
+                        >
+                          <p className="text-base font-medium flex-1" style={{ color: 'var(--color-text)' }}>
+                            {SUPER_ADMIN_USERNAME}
+                          </p>
+                          <Edit size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: 'var(--color-text-secondary)' }} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contraseña - Editable */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                          Contraseña:
+                        </label>
+                        <button
+                          onClick={() => setShowForgotPasswordModal(true)}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Olvidé mi contraseña
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 border rounded-lg" style={{ 
+                          borderColor: 'var(--color-border)', 
+                          backgroundColor: 'var(--color-surface)', 
+                          color: 'var(--color-text)' 
+                        }}>
+                          <p className="flex-1 font-mono text-base" style={{ color: 'var(--color-text)' }}>
+                            {showPassword.company ? (localStorage.getItem('cubic_password') || SUPER_ADMIN_PASSWORD) : '••••••••'}
+                          </p>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              console.log('Botón ver contraseña clickeado (empresa)')
+                              handlePasswordAction('view', 'company', e)
+                            }}
+                            className="p-2 hover:bg-opacity-20 rounded transition-colors cursor-pointer flex items-center justify-center"
+                            style={{ 
+                              color: 'var(--color-text-secondary)',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              outline: 'none'
+                            }}
+                            title="Ver contraseña"
+                            type="button"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                            }}
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              console.log('Botón editar contraseña clickeado (empresa)')
+                              handlePasswordAction('edit', 'company', e)
+                            }}
+                            className="p-2 hover:bg-opacity-20 rounded transition-colors cursor-pointer flex items-center justify-center"
+                            style={{ 
+                              color: 'var(--color-text-secondary)',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              outline: 'none'
+                            }}
+                            title="Editar contraseña"
+                            type="button"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                            }}
+                          >
+                            <Edit size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -424,74 +887,311 @@ const AdminPanel = () => {
                   <h2 className="text-xl font-semibold" style={{ color: 'var(--color-text)' }}>
                     Gestión de Usuarios
                   </h2>
-                  <button
-                    onClick={() => {
-                      resetUserForm()
-                      setEditingUser(null)
-                      setShowUserModal(true)
-                    }}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
-                  >
-                    <Plus size={18} />
-                    Nuevo Usuario
-                  </button>
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    Vista de solo lectura - Edita usuarios desde el panel de Usuarios
+                  </p>
+                </div>
+
+                {/* Información del Usuario Super Admin */}
+                <div className="mb-6 p-4 border rounded-lg" style={{ 
+                  backgroundColor: 'var(--color-surface)', 
+                  borderColor: 'var(--color-border)' 
+                }}>
+                  <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+                    Información del Usuario Super Admin
+                  </h3>
+                  <div className="space-y-4">
+                    {/* Nombre - Editable */}
+                    <div>
+                      <label className="text-sm font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Nombre:
+                      </label>
+                      {editingField === 'userName' ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="text"
+                            value={editValues.userName !== undefined ? editValues.userName : 'Admin Usuario'}
+                            onChange={(e) => setEditValues({ ...editValues, userName: e.target.value })}
+                            className="flex-1 px-3 py-2 border rounded-lg"
+                            style={{ 
+                              borderColor: 'var(--color-border)', 
+                              backgroundColor: 'var(--color-surface)', 
+                              color: 'var(--color-text)' 
+                            }}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                localStorage.setItem('cubic_displayName', editValues.userName)
+                                setEditingField(null)
+                                setEditValues({})
+                                alert('✅ Nombre actualizado')
+                              } else if (e.key === 'Escape') {
+                                setEditingField(null)
+                                setEditValues({})
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('cubic_displayName', editValues.userName)
+                              setEditingField(null)
+                              setEditValues({})
+                              alert('✅ Nombre actualizado')
+                            }}
+                            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingField(null)
+                              setEditValues({})
+                            }}
+                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="flex items-center gap-2 mt-1 group cursor-pointer hover:bg-opacity-5 rounded p-1 -ml-1"
+                          onClick={() => {
+                            setEditingField('userName')
+                            setEditValues({ userName: localStorage.getItem('cubic_displayName') || 'Admin Usuario' })
+                          }}
+                        >
+                          <p className="text-base font-medium flex-1" style={{ color: 'var(--color-text)' }}>
+                            {localStorage.getItem('cubic_displayName') || 'Admin Usuario'}
+                          </p>
+                          <Edit size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: 'var(--color-text-secondary)' }} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Usuario - Editable */}
+                    <div>
+                      <label className="text-sm font-medium block mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                        Usuario:
+                      </label>
+                      {editingField === 'userUsername' ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="text"
+                            value={editValues.userUsername !== undefined ? editValues.userUsername : SUPER_ADMIN_USERNAME}
+                            onChange={(e) => setEditValues({ ...editValues, userUsername: e.target.value })}
+                            className="flex-1 px-3 py-2 border rounded-lg"
+                            style={{ 
+                              borderColor: 'var(--color-border)', 
+                              backgroundColor: 'var(--color-surface)', 
+                              color: 'var(--color-text)' 
+                            }}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                localStorage.setItem('cubic_username', editValues.userUsername)
+                                setEditingField(null)
+                                setEditValues({})
+                                alert('✅ Usuario actualizado (requiere reiniciar sesión)')
+                              } else if (e.key === 'Escape') {
+                                setEditingField(null)
+                                setEditValues({})
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('cubic_username', editValues.userUsername)
+                              setEditingField(null)
+                              setEditValues({})
+                              alert('✅ Usuario actualizado (requiere reiniciar sesión)')
+                            }}
+                            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                          >
+                            Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingField(null)
+                              setEditValues({})
+                            }}
+                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="flex items-center gap-2 mt-1 group cursor-pointer hover:bg-opacity-5 rounded p-1 -ml-1"
+                          onClick={() => {
+                            setEditingField('userUsername')
+                            setEditValues({ userUsername: SUPER_ADMIN_USERNAME })
+                          }}
+                        >
+                          <p className="text-base font-medium flex-1" style={{ color: 'var(--color-text)' }}>
+                            {SUPER_ADMIN_USERNAME}
+                          </p>
+                          <Edit size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: 'var(--color-text-secondary)' }} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contraseña - Editable */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+                          Contraseña:
+                        </label>
+                        <button
+                          onClick={() => setShowForgotPasswordModal(true)}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Olvidé mi contraseña
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 flex items-center gap-2 px-3 py-2 border rounded-lg" style={{ 
+                          borderColor: 'var(--color-border)', 
+                          backgroundColor: 'var(--color-surface)', 
+                          color: 'var(--color-text)' 
+                        }}>
+                          <p className="flex-1 font-mono text-base" style={{ color: 'var(--color-text)' }}>
+                            {showPassword.user ? (localStorage.getItem('cubic_password') || SUPER_ADMIN_PASSWORD) : '••••••••'}
+                          </p>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              console.log('Botón ver contraseña clickeado (usuario)')
+                              handlePasswordAction('view', 'user', e)
+                            }}
+                            className="p-2 hover:bg-opacity-20 rounded transition-colors cursor-pointer flex items-center justify-center"
+                            style={{ 
+                              color: 'var(--color-text-secondary)',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              outline: 'none'
+                            }}
+                            title="Ver contraseña"
+                            type="button"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                            }}
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              console.log('Botón editar contraseña clickeado (usuario)')
+                              handlePasswordAction('edit', 'user', e)
+                            }}
+                            className="p-2 hover:bg-opacity-20 rounded transition-colors cursor-pointer flex items-center justify-center"
+                            style={{ 
+                              color: 'var(--color-text-secondary)',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              outline: 'none'
+                            }}
+                            title="Editar contraseña"
+                            type="button"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                            }}
+                          >
+                            <Edit size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr style={{ borderColor: 'var(--color-border)' }}>
-                        <th className="border p-3 text-left" style={{ color: 'var(--color-text)' }}>Email</th>
-                        <th className="border p-3 text-left" style={{ color: 'var(--color-text)' }}>Empresa</th>
-                        <th className="border p-3 text-left" style={{ color: 'var(--color-text)' }}>Rol</th>
-                        <th className="border p-3 text-left" style={{ color: 'var(--color-text)' }}>Estado</th>
-                        <th className="border p-3 text-left" style={{ color: 'var(--color-text)' }}>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((user) => (
-                        <tr key={user.id} style={{ borderColor: 'var(--color-border)' }}>
-                          <td className="border p-3" style={{ color: 'var(--color-text)' }}>
-                            {user.email || user.id}
-                          </td>
-                          <td className="border p-3" style={{ color: 'var(--color-text-secondary)' }}>
-                            {user.companyId || 'N/A'}
-                          </td>
-                          <td className="border p-3">
-                            {user.admin ? (
-                              <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
-                                Admin
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">
-                                Usuario
-                              </span>
-                            )}
-                          </td>
-                          <td className="border p-3">
-                            {user.activo !== false ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                                Activo
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
-                                Inactivo
-                              </span>
-                            )}
-                          </td>
-                          <td className="border p-3">
-                            <button
-                              onClick={() => handleEditUser(user)}
-                              className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                            >
-                              <Edit size={14} className="inline-block mr-1" />
-                              Editar
-                            </button>
-                          </td>
+                  {loading ? (
+                    <div className="text-center py-12">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mb-4"></div>
+                      <p style={{ color: 'var(--color-text-secondary)' }}>Cargando usuarios...</p>
+                    </div>
+                  ) : users.length === 0 ? (
+                    <div className="text-center py-12" style={{ color: 'var(--color-text-secondary)' }}>
+                      <Users size={48} className="mx-auto mb-4 opacity-30" />
+                      <p className="text-lg font-medium mb-2">No hay usuarios registrados</p>
+                      <p className="text-sm">Ve al panel de Usuarios para crear nuevos usuarios</p>
+                    </div>
+                  ) : (
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface-secondary)' }}>
+                          <th className="border p-3 text-left text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Usuario</th>
+                          <th className="border p-3 text-left text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Email</th>
+                          <th className="border p-3 text-left text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Empresa</th>
+                          <th className="border p-3 text-left text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Rol</th>
+                          <th className="border p-3 text-left text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Estado</th>
+                          <th className="border p-3 text-left text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Acciones</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {users.map((user) => (
+                          <tr key={user.id} className="hover:bg-gray-50" style={{ borderColor: 'var(--color-border)' }}>
+                            <td className="border p-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                                  {user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U')}
+                                </div>
+                                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                                  {user.displayName || user.email || user.id}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="border p-3" style={{ color: 'var(--color-text)' }}>
+                              {user.email || 'N/A'}
+                            </td>
+                            <td className="border p-3" style={{ color: 'var(--color-text-secondary)' }}>
+                              {user.companyId || 'N/A'}
+                            </td>
+                            <td className="border p-3">
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                {getRoleName(user.role)}
+                              </span>
+                            </td>
+                            <td className="border p-3">
+                              {user.activo !== false ? (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                                  Activo
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
+                                  Inactivo
+                                </span>
+                              )}
+                            </td>
+                            <td className="border p-3">
+                              {isAdmin() ? (
+                                <button
+                                  onClick={() => handleEditUser(user)}
+                                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-1"
+                                >
+                                  <Edit size={14} />
+                                  Editar
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-400" title="Solo los administradores pueden editar usuarios">
+                                  Sin permisos
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             )}
@@ -514,13 +1214,13 @@ const AdminPanel = () => {
         )}
 
         {/* Modal: Crear/Editar Usuario */}
-        {showUserModal && (
+        {showUserModal && editingUser && (
           <UserModal
             user={editingUser}
             formData={userForm}
             setFormData={setUserForm}
             companies={companies}
-            onSave={editingUser ? handleUpdateUser : handleCreateUser}
+            onSave={handleUpdateUser}
             onClose={() => {
               setShowUserModal(false)
               setEditingUser(null)
@@ -528,8 +1228,281 @@ const AdminPanel = () => {
             }}
           />
         )}
+
+        {/* Modal para verificar contraseña actual */}
+        {showVerifyPasswordModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            style={{ zIndex: 9999, position: 'fixed' }}
+          >
+            <div 
+              className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl" 
+              style={{ 
+                backgroundColor: 'var(--color-surface)',
+                zIndex: 10000,
+                position: 'relative'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+                Verificar Contraseña
+              </h3>
+              <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                Por favor ingresa tu contraseña actual para {passwordAction === 'view' ? 'ver' : 'editar'} la contraseña.
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                  Contraseña actual:
+                </label>
+                <input
+                  ref={passwordInputRef}
+                  type="password"
+                  value={currentPasswordInput}
+                  onChange={(e) => {
+                    setCurrentPasswordInput(e.target.value)
+                    setPasswordError('')
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  style={{ 
+                    borderColor: passwordError ? '#ef4444' : 'var(--color-border)', 
+                    backgroundColor: 'var(--color-surface)', 
+                    color: 'var(--color-text)' 
+                  }}
+                  placeholder="Ingresa tu contraseña"
+                  autoComplete="off"
+                  name="verify-password-modal"
+                  id="verify-password-modal"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleVerifyPassword()
+                    } else if (e.key === 'Escape') {
+                      setShowVerifyPasswordModal(false)
+                      setCurrentPasswordInput('')
+                      setPasswordError('')
+                      setPasswordAction(null)
+                      setPasswordContext(null)
+                    }
+                  }}
+                />
+                {passwordError && (
+                  <p className="text-sm text-red-600 mt-1">{passwordError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowVerifyPasswordModal(false)
+                    setCurrentPasswordInput('')
+                    setPasswordError('')
+                    setPasswordAction(null)
+                    setPasswordContext(null)
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleVerifyPassword}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Verificar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para cambiar contraseña */}
+        {showChangePasswordModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            style={{ zIndex: 9999, position: 'fixed' }}
+          >
+            <div 
+              className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl" 
+              style={{ 
+                backgroundColor: 'var(--color-surface)',
+                zIndex: 10000,
+                position: 'relative'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text)' }}>
+                Cambiar Contraseña
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                    Nueva contraseña:
+                  </label>
+                  <input
+                    type="password"
+                    value={newPasswordInput}
+                    onChange={(e) => {
+                      setNewPasswordInput(e.target.value)
+                      setPasswordError('')
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    style={{ 
+                      borderColor: passwordError ? '#ef4444' : 'var(--color-border)', 
+                      backgroundColor: 'var(--color-surface)', 
+                      color: 'var(--color-text)' 
+                    }}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setShowChangePasswordModal(false)
+                        setNewPasswordInput('')
+                        setConfirmPasswordInput('')
+                        setPasswordError('')
+                        setPasswordAction(null)
+                        setPasswordContext(null)
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                    Confirmar nueva contraseña:
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPasswordInput}
+                    onChange={(e) => {
+                      setConfirmPasswordInput(e.target.value)
+                      setPasswordError('')
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    style={{ 
+                      borderColor: passwordError ? '#ef4444' : 'var(--color-border)', 
+                      backgroundColor: 'var(--color-surface)', 
+                      color: 'var(--color-text)' 
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleChangePassword()
+                      } else if (e.key === 'Escape') {
+                        setShowChangePasswordModal(false)
+                        setNewPasswordInput('')
+                        setConfirmPasswordInput('')
+                        setPasswordError('')
+                        setPasswordAction(null)
+                        setPasswordContext(null)
+                      }
+                    }}
+                  />
+                </div>
+                {passwordError && (
+                  <p className="text-sm text-red-600">{passwordError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowChangePasswordModal(false)
+                    setNewPasswordInput('')
+                    setConfirmPasswordInput('')
+                    setPasswordError('')
+                    setPasswordAction(null)
+                    setPasswordContext(null)
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Cambiar Contraseña
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para olvidé mi contraseña */}
+        {showForgotPasswordModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            style={{ zIndex: 9999, position: 'fixed' }}
+          >
+            <div 
+              className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl" 
+              style={{ 
+                backgroundColor: 'var(--color-surface)',
+                zIndex: 10000,
+                position: 'relative'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--color-text)' }}>
+                <Mail size={20} />
+                Recuperar Contraseña
+              </h3>
+              <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
+                Ingresa tu correo electrónico y te enviaremos tu contraseña actual.
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                  Correo electrónico:
+                </label>
+                <input
+                  type="email"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => {
+                    setForgotPasswordEmail(e.target.value)
+                    setPasswordError('')
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  style={{ 
+                    borderColor: passwordError ? '#ef4444' : 'var(--color-border)', 
+                    backgroundColor: 'var(--color-surface)', 
+                    color: 'var(--color-text)' 
+                  }}
+                  placeholder="tu@email.com"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleForgotPassword()
+                    } else if (e.key === 'Escape') {
+                      setShowForgotPasswordModal(false)
+                      setForgotPasswordEmail('')
+                      setPasswordError('')
+                    }
+                  }}
+                />
+                {passwordError && (
+                  <p className="text-sm text-red-600 mt-1">{passwordError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowForgotPasswordModal(false)
+                    setForgotPasswordEmail('')
+                    setPasswordError('')
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleForgotPassword}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <Mail size={16} />
+                  Enviar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+    </>
   )
 }
 
@@ -664,14 +1637,19 @@ const CompanyModal = ({ company, formData, setFormData, onSave, onClose }) => {
   )
 }
 
-// Modal para crear/editar usuario
+// Modal para editar usuario (solo edición, no creación)
 const UserModal = ({ user, formData, setFormData, companies, onSave, onClose }) => {
+  // Solo permitir edición si hay un usuario
+  if (!user) {
+    return null
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         <div className="bg-primary-600 text-white px-6 py-4 flex items-center justify-between rounded-t-lg">
           <h2 className="text-xl font-bold">
-            {user ? 'Editar Usuario' : 'Nuevo Usuario'}
+            Editar Usuario
           </h2>
           <button onClick={onClose} className="text-white hover:text-gray-200">
             ✕
@@ -680,7 +1658,7 @@ const UserModal = ({ user, formData, setFormData, companies, onSave, onClose }) 
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email *</label>
+            <label className="block text-sm font-medium mb-1">USUARIO *</label>
             <input
               type="email"
               value={formData.email}
@@ -719,15 +1697,47 @@ const UserModal = ({ user, formData, setFormData, companies, onSave, onClose }) 
           </div>
 
           <div>
+            <label className="block text-sm font-medium mb-1">Rol *</label>
+            <select
+              value={formData.role}
+              onChange={(e) => {
+                const newRole = e.target.value
+                setFormData({ 
+                  ...formData, 
+                  role: newRole,
+                  isAdmin: newRole === 'admin' // Auto-asignar admin si el rol es admin
+                })
+              }}
+              className="w-full px-3 py-2 border rounded-lg"
+              required
+            >
+              {ROLES_LIST.map(role => (
+                <option key={role.id} value={role.id}>
+                  {role.icon} {role.nombre}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs mt-1 text-gray-500">
+              {getRoleById(formData.role)?.descripcion}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.isAdmin}
-                onChange={(e) => setFormData({ ...formData, isAdmin: e.target.checked })}
+                checked={formData.activo}
+                onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                 className="w-4 h-4"
               />
-              <span className="text-sm font-medium">Es Administrador</span>
+              <span className="text-sm font-medium">Usuario Activo</span>
             </label>
+            {formData.role === 'admin' && (
+              <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 flex items-center gap-1">
+                <Shield size={12} />
+                Administrador
+              </span>
+            )}
           </div>
         </div>
 
@@ -736,7 +1746,7 @@ const UserModal = ({ user, formData, setFormData, companies, onSave, onClose }) 
             Cancelar
           </button>
           <button onClick={onSave} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
-            {user ? 'Actualizar' : 'Crear'}
+            Actualizar
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { FileText, Plus, Search, CheckCircle, XCircle, Clock, Edit, Save, RotateCcw, X, ShoppingCart, GripVertical, ChevronLeft, ChevronRight, UserPlus, Trash2, Download, Send, Layout, Type, Image, Table, Move, Trash, Eye, ZoomIn, ZoomOut, Ruler, DollarSign, Copy } from 'lucide-react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { FileText, Plus, Search, CheckCircle, XCircle, Clock, Edit, Save, RotateCcw, X, ShoppingCart, GripVertical, ChevronLeft, ChevronRight, UserPlus, Trash2, Download, Send, Layout, Type, Image, Table, Move, Trash, Eye, ZoomIn, ZoomOut, Ruler, DollarSign, Copy, Scan } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { getCotizaciones, saveCotizacion, updateCotizacion, deleteCotizacion, getClientes, getProductos, saveCliente, saveVenta } from '../utils/firebaseUtils'
@@ -18,6 +18,7 @@ const Cotizaciones = () => {
   const [mostrarEjemplos, setMostrarEjemplos] = useState(false) // Mostrar ejemplos en memoria
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState(null) // Cotización seleccionada para ver detalles
   const [showConfiguracionPDF, setShowConfiguracionPDF] = useState(false) // Modal de configuración del PDF
+  const [showOCRModal, setShowOCRModal] = useState(false) // Modal de Lector de Imagen OCR
   const [configuracionPDF, setConfiguracionPDF] = useState(() => {
     // Limpiar configuración anterior y empezar con hoja en blanco
     try {
@@ -1479,7 +1480,7 @@ const Cotizaciones = () => {
                       </div>
                     </div>
 
-                    {productoSeleccionado.presentaciones && productoSeleccionado.presentaciones.length > 1 && (
+                    {productoSeleccionado.presentaciones && productoSeleccionado.presentaciones.length > 0 && (
                       <div className="mt-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Presentación:</label>
                         <div className="flex flex-wrap gap-2">
@@ -1493,7 +1494,7 @@ const Cotizaciones = () => {
                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                               }`}
                             >
-                              {pres.presentacion} ({pres.cantidad})
+                              {pres.presentacion} ({pres.cantidad} UND)
                             </button>
                           ))}
                         </div>
@@ -1876,6 +1877,14 @@ const Cotizaciones = () => {
             Presentación
           </button>
           <button
+            onClick={() => setShowOCRModal(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+            title="Lector de Imagen OCR - Extraer datos de cotizaciones desde imágenes"
+          >
+            <Scan size={20} />
+            LECTOR DE IMAGEN
+          </button>
+          <button
             onClick={() => setShowCrearCotizacion(true)}
             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2"
         >
@@ -2140,6 +2149,19 @@ const Cotizaciones = () => {
         />
       )}
 
+      {/* Modal de Lector de Imagen OCR */}
+      {showOCRModal && (
+        <ModalOCR
+          onClose={() => setShowOCRModal(false)}
+          onProcess={(datosExtraidos) => {
+            // Aquí se procesarán los datos extraídos del OCR
+            console.log('Datos extraídos del OCR:', datosExtraidos)
+            // TODO: Implementar lógica para crear cotización desde datos OCR
+            setShowOCRModal(false)
+          }}
+        />
+      )}
+
       {/* Modal de Detalles de Cotización (Nota de Venta) */}
       {cotizacionSeleccionada && (
         <ModalDetallesCotizacion
@@ -2154,8 +2176,239 @@ const Cotizaciones = () => {
   )
 }
 
+// Funciones auxiliares fuera del componente para evitar problemas con hooks
+const getPlantillaDEMODefault = () => {
+  return {
+    nombre: 'DEMO',
+    elementos: [
+      {
+        id: 'titulo',
+        tipo: 'header',
+        texto: 'COTIZACIÓN - NOTA DE VENTA',
+        x: 105,
+        y: 15,
+        width: 180,
+        height: 10,
+        fontSize: 20,
+        fontWeight: 'bold',
+        align: 'center',
+        color: '#ffffff',
+        backgroundColor: '#f97316',
+        visible: true
+      },
+      {
+        id: 'subtitulo',
+        tipo: 'texto',
+        texto: 'Qubit - Sistema de Gestión',
+        x: 105,
+        y: 25,
+        width: 180,
+        height: 5,
+        fontSize: 12,
+        fontWeight: 'normal',
+        align: 'center',
+        color: '#6b7280',
+        visible: true
+      },
+      {
+        id: 'info_cliente',
+        tipo: 'texto',
+        texto: 'INFORMACIÓN DE LA COTIZACIÓN\nCliente: {cliente}\nFecha: {fecha}\nVencimiento: {fechaVencimiento}\nVendedor: {vendedor}\nEstado: {estado}',
+        x: 15,
+        y: 50,
+        width: 180,
+        height: 30,
+        fontSize: 10,
+        fontWeight: 'normal',
+        align: 'left',
+        color: '#000000',
+        visible: true
+      },
+      {
+        id: 'tabla_productos',
+        tipo: 'tabla',
+        x: 15,
+        y: 90,
+        width: 180,
+        height: 100,
+        headers: [
+          { texto: 'Producto', color: '#000000' },
+          { texto: 'Cant.', color: '#000000' },
+          { texto: 'Pres.', color: '#000000' },
+          { texto: 'P.', color: '#000000' },
+          { texto: 'Desc.', color: '#000000' },
+          { texto: 'Total', color: '#000000' }
+        ],
+        tituloTabla: 'DETALLE DE PRODUCTOS',
+        colorTituloTabla: '#000000',
+        visible: true
+      },
+      {
+        id: 'totales',
+        tipo: 'totales',
+        x: 15,
+        y: 200,
+        width: 180,
+        height: 20,
+        fontSize: 10,
+        align: 'right',
+        color: '#000000',
+        colorTotal: '#0284c7',
+        lineas: [
+          { label: 'Subtotal:', color: '#000000' },
+          { label: 'Descuento General:', color: '#000000' },
+          { label: 'Impuesto (15.25%):', color: '#000000' },
+          { label: 'TOTAL:', color: '#0284c7' }
+        ],
+        visible: true
+      },
+      {
+        id: 'observaciones',
+        tipo: 'texto',
+        texto: 'Observaciones:\n{observaciones}',
+        x: 15,
+        y: 230,
+        width: 180,
+        height: 30,
+        fontSize: 10,
+        fontWeight: 'normal',
+        align: 'left',
+        color: '#000000',
+        visible: true
+      }
+    ],
+    margen: 15,
+    colorPrimario: '#2563eb',
+    colorSecundario: '#6b7280'
+  }
+}
+
+const cargarPlantillas = () => {
+  try {
+    const guardadas = localStorage.getItem('cotizacion_plantillas')
+    let plantillas = []
+    
+    if (guardadas) {
+      const parsed = JSON.parse(guardadas)
+      // Filtrar la "Plantilla en Blanco" si existe
+      plantillas = Array.isArray(parsed) 
+        ? parsed.filter(p => p.nombre !== 'Plantilla en Blanco') 
+        : []
+    }
+    
+    // Verificar si existe la plantilla DEMO
+    const existeDEMO = plantillas.some(p => p.nombre === 'DEMO')
+    
+    // Si no existe, agregarla al inicio
+    if (!existeDEMO) {
+      const plantillaDEMO = getPlantillaDEMODefault()
+      plantillas = [plantillaDEMO, ...plantillas]
+      // Guardar en localStorage
+      localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillas))
+    } else {
+      // Si existe, asegurar que esté al inicio y actualizar si es necesario
+      const indexDEMO = plantillas.findIndex(p => p.nombre === 'DEMO')
+      if (indexDEMO > 0) {
+        // Mover DEMO al inicio
+        const plantillaDEMO = plantillas[indexDEMO]
+        plantillas.splice(indexDEMO, 1)
+        plantillas.unshift(plantillaDEMO)
+        localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillas))
+      }
+    }
+    
+    return plantillas
+  } catch (e) {
+    console.error('Error al cargar plantillas:', e)
+    // Si hay error, retornar al menos la plantilla DEMO
+    const plantillaDEMO = getPlantillaDEMODefault()
+    try {
+      localStorage.setItem('cotizacion_plantillas', JSON.stringify([plantillaDEMO]))
+    } catch (e2) {
+      console.error('Error al guardar plantilla DEMO:', e2)
+    }
+    return [plantillaDEMO]
+  }
+}
+
+const asegurarPlantillaDEMO = (plantillasArray) => {
+  const existeDEMO = plantillasArray.some(p => p.nombre === 'DEMO')
+  
+  if (!existeDEMO) {
+    // Si no existe, agregarla al inicio
+    const plantillaDEMO = getPlantillaDEMODefault()
+    return [plantillaDEMO, ...plantillasArray]
+  } else {
+    // Si existe, asegurar que esté al inicio
+    const indexDEMO = plantillasArray.findIndex(p => p.nombre === 'DEMO')
+    if (indexDEMO > 0) {
+      const plantillaDEMO = plantillasArray[indexDEMO]
+      const nuevasPlantillas = [...plantillasArray]
+      nuevasPlantillas.splice(indexDEMO, 1)
+      nuevasPlantillas.unshift(plantillaDEMO)
+      return nuevasPlantillas
+    }
+  }
+  
+  return plantillasArray
+}
+
+const convertirHeadersTabla = (elementos) => {
+  return elementos.map(elemento => {
+    if (elemento.tipo === 'tabla') {
+      // Convertir headers si son strings (formato antiguo)
+      if (elemento.headers) {
+        const primerHeader = elemento.headers[0]
+        if (typeof primerHeader === 'string') {
+          // Convertir array de strings a array de objetos
+          elemento.headers = elemento.headers.map(texto => ({
+            texto: texto,
+            color: '#000000'
+          }))
+        }
+      }
+      // Agregar título de tabla si no existe (para plantillas antiguas)
+      if (!elemento.tituloTabla) {
+        elemento.tituloTabla = 'DETALLE DE PRODUCTOS'
+      }
+      if (!elemento.colorTituloTabla) {
+        elemento.colorTituloTabla = '#000000'
+      }
+    }
+    // Convertir totales si no tienen lineas (formato antiguo)
+    if (elemento.tipo === 'totales' && !elemento.lineas) {
+      elemento.lineas = [
+        { label: 'Subtotal:', color: '#000000' },
+        { label: 'Descuento General:', color: '#000000' },
+        { label: 'Impuesto (15.25%):', color: '#000000' },
+        { label: 'TOTAL:', color: elemento.colorTotal || '#0284c7' }
+      ]
+    }
+    return elemento
+  })
+}
+
 // Componente Modal de Configuración del PDF - Editor Visual
 const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
+  // Plantilla DEMO por defecto - siempre debe existir (definida antes de hooks)
+  const getPlantillaDEMODefaultLocal = () => {
+    return getPlantillaDEMODefault()
+  }
+
+  // Plantilla base - Hoja en blanco
+  const plantillaBase = {
+    nombre: 'Plantilla en Blanco',
+    elementos: [],
+    margen: 15,
+    colorPrimario: '#2563eb',
+    colorSecundario: '#6b7280'
+  }
+
+  // ========== TODOS LOS HOOKS DEBEN ESTAR AQUÍ ==========
+  // Refs para throttling y optimización (deben estar antes de otros hooks)
+  const rafIdRef = useRef(null)
+  const lastUpdateRef = useRef({ x: null, y: null, width: null, height: null })
+
   // Hoja completamente en blanco
   const [config, setConfig] = useState({
     elementos: [],
@@ -2173,8 +2426,25 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
   const canvasRef = useRef(null)
   const canvasContainerRef = useRef(null)
   const [reorganizadoInicialmente, setReorganizadoInicialmente] = useState(false)
-  const [zoom, setZoom] = useState(100) // Zoom inicial al 100%
   const [mostrarRegla, setMostrarRegla] = useState(true) // Mostrar regla por defecto
+  const [zoom, setZoom] = useState(100) // Zoom inicial al 100%
+  const [zoomDisplay, setZoomDisplay] = useState(100) // Zoom para mostrar (con debounce)
+  const [isZooming, setIsZooming] = useState(false) // Estado para ocultar reglas durante zoom
+  const zoomTimeoutRef = useRef(null)
+  
+  // Inicializar plantillas - usar valor inicial simple
+  const [plantillas, setPlantillas] = useState([])
+  const [plantillaActual, setPlantillaActual] = useState(null) // Nombre de la plantilla en uso
+  const [plantillaCargada, setPlantillaCargada] = useState(false) // Para evitar loops
+
+  // Escala base para mostrar el canvas (A4: 210x297mm)
+  // Escala tamaño real: 1mm = 3.7795275590551px (96 DPI estándar)
+  const escalaBase = 3.7795275590551 // Tamaño real A4: 210mm × 297mm = 794px × 1123px
+  
+  // Memoizar escala y dimensiones del canvas para evitar recalcular en cada render
+  const escala = useMemo(() => escalaBase * (zoom / 100), [zoom])
+  const anchoCanvas = useMemo(() => 210 * escala, [escala])
+  const altoCanvas = useMemo(() => 297 * escala, [escala])
   
   // Limpiar localStorage al montar para asegurar hoja en blanco
   useEffect(() => {
@@ -2188,234 +2458,19 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
       console.error('Error al limpiar configuración:', e)
     }
   }, [])
-  
-  // Plantilla base - Hoja en blanco
-  const plantillaBase = {
-    nombre: 'Plantilla en Blanco',
-    elementos: [],
-    margen: 15,
-    colorPrimario: '#2563eb',
-    colorSecundario: '#6b7280'
-  }
-  
-  // Plantilla DEMO por defecto - siempre debe existir
-  const getPlantillaDEMODefault = () => {
-    return {
-      nombre: 'DEMO',
-      elementos: [
-        {
-          id: 'titulo',
-          tipo: 'header',
-          texto: 'COTIZACIÓN - NOTA DE VENTA',
-          x: 105,
-          y: 15,
-          width: 180,
-          height: 10,
-          fontSize: 20,
-          fontWeight: 'bold',
-          align: 'center',
-          color: '#ffffff',
-          backgroundColor: '#f97316',
-          visible: true
-        },
-        {
-          id: 'subtitulo',
-          tipo: 'texto',
-          texto: 'Qubit - Sistema de Gestión',
-          x: 105,
-          y: 25,
-          width: 180,
-          height: 5,
-          fontSize: 12,
-          fontWeight: 'normal',
-          align: 'center',
-          color: '#6b7280',
-          visible: true
-        },
-        {
-          id: 'info_cliente',
-          tipo: 'texto',
-          texto: 'INFORMACIÓN DE LA COTIZACIÓN\nCliente: {cliente}\nFecha: {fecha}\nVencimiento: {fechaVencimiento}\nVendedor: {vendedor}\nEstado: {estado}',
-          x: 15,
-          y: 50,
-          width: 180,
-          height: 30,
-          fontSize: 10,
-          fontWeight: 'normal',
-          align: 'left',
-          color: '#000000',
-          visible: true
-        },
-        {
-          id: 'tabla_productos',
-          tipo: 'tabla',
-          x: 15,
-          y: 90,
-          width: 180,
-          height: 100,
-          headers: [
-            { texto: 'Producto', color: '#000000' },
-            { texto: 'Cant.', color: '#000000' },
-            { texto: 'Pres.', color: '#000000' },
-            { texto: 'P.', color: '#000000' },
-            { texto: 'Desc.', color: '#000000' },
-            { texto: 'Total', color: '#000000' }
-          ],
-          tituloTabla: 'DETALLE DE PRODUCTOS',
-          colorTituloTabla: '#000000',
-          visible: true
-        },
-        {
-          id: 'totales',
-          tipo: 'totales',
-          x: 15,
-          y: 200,
-          width: 180,
-          height: 20,
-          fontSize: 10,
-          align: 'right',
-          color: '#000000',
-          colorTotal: '#0284c7',
-          lineas: [
-            { label: 'Subtotal:', color: '#000000' },
-            { label: 'Descuento General:', color: '#000000' },
-            { label: 'Impuesto (15.25%):', color: '#000000' },
-            { label: 'TOTAL:', color: '#0284c7' }
-          ],
-          visible: true
-        },
-        {
-          id: 'observaciones',
-          tipo: 'texto',
-          texto: 'Observaciones:\n{observaciones}',
-          x: 15,
-          y: 230,
-          width: 180,
-          height: 30,
-          fontSize: 10,
-          fontWeight: 'normal',
-          align: 'left',
-          color: '#000000',
-          visible: true
-        }
-      ],
-      margen: 15,
-      colorPrimario: '#2563eb',
-      colorSecundario: '#6b7280'
-    }
-  }
 
-  // Cargar plantillas guardadas y asegurar que DEMO siempre exista
-  const cargarPlantillas = () => {
+  // Cargar plantillas al montar
+  useEffect(() => {
     try {
-      const guardadas = localStorage.getItem('cotizacion_plantillas')
-      let plantillas = []
-      
-      if (guardadas) {
-        const parsed = JSON.parse(guardadas)
-        // Filtrar la "Plantilla en Blanco" si existe
-        plantillas = Array.isArray(parsed) 
-          ? parsed.filter(p => p.nombre !== 'Plantilla en Blanco') 
-          : []
-      }
-      
-      // Verificar si existe la plantilla DEMO
-      const existeDEMO = plantillas.some(p => p.nombre === 'DEMO')
-      
-      // Si no existe, agregarla al inicio
-      if (!existeDEMO) {
-        const plantillaDEMO = getPlantillaDEMODefault()
-        plantillas = [plantillaDEMO, ...plantillas]
-        // Guardar en localStorage
-        localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillas))
-      } else {
-        // Si existe, asegurar que esté al inicio y actualizar si es necesario
-        const indexDEMO = plantillas.findIndex(p => p.nombre === 'DEMO')
-        if (indexDEMO > 0) {
-          // Mover DEMO al inicio
-          const plantillaDEMO = plantillas[indexDEMO]
-          plantillas.splice(indexDEMO, 1)
-          plantillas.unshift(plantillaDEMO)
-          localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillas))
-        }
-      }
-      
-      return plantillas
+      const plantillasCargadas = cargarPlantillas()
+      setPlantillas(plantillasCargadas)
     } catch (e) {
       console.error('Error al cargar plantillas:', e)
-      // Si hay error, retornar al menos la plantilla DEMO
+      // Si hay error, al menos tener la plantilla DEMO
       const plantillaDEMO = getPlantillaDEMODefault()
-      try {
-        localStorage.setItem('cotizacion_plantillas', JSON.stringify([plantillaDEMO]))
-      } catch (e2) {
-        console.error('Error al guardar plantilla DEMO:', e2)
-      }
-      return [plantillaDEMO]
+      setPlantillas([plantillaDEMO])
     }
-  }
-  
-  // Función helper para asegurar que DEMO siempre esté presente
-  const asegurarPlantillaDEMO = (plantillasArray) => {
-    const existeDEMO = plantillasArray.some(p => p.nombre === 'DEMO')
-    
-    if (!existeDEMO) {
-      // Si no existe, agregarla al inicio
-      const plantillaDEMO = getPlantillaDEMODefault()
-      return [plantillaDEMO, ...plantillasArray]
-    } else {
-      // Si existe, asegurar que esté al inicio
-      const indexDEMO = plantillasArray.findIndex(p => p.nombre === 'DEMO')
-      if (indexDEMO > 0) {
-        const plantillaDEMO = plantillasArray[indexDEMO]
-        const nuevasPlantillas = [...plantillasArray]
-        nuevasPlantillas.splice(indexDEMO, 1)
-        nuevasPlantillas.unshift(plantillaDEMO)
-        return nuevasPlantillas
-      }
-    }
-    
-    return plantillasArray
-  }
-  
-  // Función para convertir headers antiguos (array de strings) al nuevo formato (array de objetos)
-  const convertirHeadersTabla = (elementos) => {
-    return elementos.map(elemento => {
-      if (elemento.tipo === 'tabla') {
-        // Convertir headers si son strings (formato antiguo)
-        if (elemento.headers) {
-          const primerHeader = elemento.headers[0]
-          if (typeof primerHeader === 'string') {
-            // Convertir array de strings a array de objetos
-            elemento.headers = elemento.headers.map(texto => ({
-              texto: texto,
-              color: '#000000'
-            }))
-          }
-        }
-        // Agregar título de tabla si no existe (para plantillas antiguas)
-        if (!elemento.tituloTabla) {
-          elemento.tituloTabla = 'DETALLE DE PRODUCTOS'
-        }
-        if (!elemento.colorTituloTabla) {
-          elemento.colorTituloTabla = '#000000'
-        }
-      }
-      // Convertir totales si no tienen lineas (formato antiguo)
-      if (elemento.tipo === 'totales' && !elemento.lineas) {
-        elemento.lineas = [
-          { label: 'Subtotal:', color: '#000000' },
-          { label: 'Descuento General:', color: '#000000' },
-          { label: 'Impuesto (15.25%):', color: '#000000' },
-          { label: 'TOTAL:', color: elemento.colorTotal || '#0284c7' }
-        ]
-      }
-      return elemento
-    })
-  }
-
-  const [plantillas, setPlantillas] = useState(cargarPlantillas())
-  const [plantillaActual, setPlantillaActual] = useState(null) // Nombre de la plantilla en uso
-  const [plantillaCargada, setPlantillaCargada] = useState(false) // Para evitar loops
+  }, [])
 
   // Cargar plantilla activa guardada al montar el componente
   useEffect(() => {
@@ -2427,7 +2482,7 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
         const plantilla = plantillas.find(p => p.nombre === plantillaActivaNombre)
         if (plantilla) {
           // Convertir headers antiguos al nuevo formato si es necesario
-          const elementosConvertidos = convertirHeadersTabla(JSON.parse(JSON.stringify(plantilla.elementos)))
+          const elementosConvertidos = convertirHeadersTabla(JSON.parse(JSON.stringify(plantilla.elementos || [])))
           
           setConfig({
             elementos: elementosConvertidos,
@@ -2444,6 +2499,255 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     }
   }, [plantillas, plantillaCargada])
 
+  // Debounce del zoom para mejorar rendimiento
+  useEffect(() => {
+    // Actualizar display inmediatamente para feedback visual
+    setZoomDisplay(zoom)
+    
+    // Ocultar reglas durante zoom para mejorar rendimiento
+    setIsZooming(true)
+    
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current)
+    }
+    
+    zoomTimeoutRef.current = setTimeout(() => {
+      setIsZooming(false)
+    }, 200) // 200ms después del último cambio de zoom
+    
+    return () => {
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current)
+      }
+    }
+  }, [zoom])
+  
+  // Funciones de zoom - permitir hasta 100% sin restricciones - memoizadas
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => Math.min(prev + 10, 100)) // Máximo 100%
+  }, [])
+  
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => Math.max(prev - 10, 25)) // Mínimo 25%
+  }, [])
+  
+  const handleZoomReset = useCallback(() => {
+    // Resetear a 100%
+    setZoom(100)
+  }, [])
+
+  // Memoizar elementoActual para evitar buscar en cada render
+  const elementoActual = useMemo(() => {
+    return config.elementos.find(el => el.id === elementoSeleccionado)
+  }, [config.elementos, elementoSeleccionado])
+
+  // Memoizar elementos filtrados para el render (optimización)
+  const elementosFiltrados = useMemo(() => {
+    return config.elementos
+      .filter(el => el.visible !== false)
+      .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+  }, [config.elementos])
+
+  // Memoizar reglas horizontales y verticales
+  const reglasHorizontales = useMemo(() => {
+    const reglas = []
+    for (let i = 0; i <= 297; i += 10) {
+      reglas.push(i)
+    }
+    return reglas
+  }, [])
+
+  const reglasVerticales = useMemo(() => {
+    const reglas = []
+    for (let i = 0; i <= 210; i += 10) {
+      reglas.push(i)
+    }
+    return reglas
+  }, [])
+
+  // Memoizar elementos de reglas horizontales (para evitar hooks dentro de JSX)
+  const reglasHorizontalesMemo = useMemo(() => {
+    const margen = config.margen || 15
+    return Array.from({ length: Math.floor(210 / 10) + 1 }, (_, i) => {
+      const mm = i * 10
+      const x = mm * escala
+      const esMargen = mm === margen || mm === (210 - margen)
+      return { mm, x, esMargen }
+    })
+  }, [escala, config.margen])
+
+  // Memoizar elementos de reglas verticales (para evitar hooks dentro de JSX)
+  const reglasVerticalesMemo = useMemo(() => {
+    const margen = config.margen || 15
+    return Array.from({ length: Math.floor(297 / 10) + 1 }, (_, i) => {
+      const mm = i * 10
+      const y = mm * escala
+      const esMargen = mm === margen || mm === (297 - margen)
+      return { mm, y, esMargen }
+    })
+  }, [escala, config.margen])
+
+  // Reorganizar automáticamente al cargar si hay superposiciones
+  useEffect(() => {
+    if (!reorganizadoInicialmente && config.elementos && config.elementos.length > 0) {
+      // Función para detectar si dos elementos se superponen
+      const elementosSeSuperponen = (el1, el2) => {
+        if (el1.id === el2.id) return false
+        return !(
+          el1.x + el1.width <= el2.x ||
+          el2.x + el2.width <= el1.x ||
+          el1.y + el1.height <= el2.y ||
+          el2.y + el2.height <= el1.y
+        )
+      }
+
+      // Verificar si hay superposiciones
+      let haySuperposiciones = false
+      for (let i = 0; i < config.elementos.length; i++) {
+        for (let j = i + 1; j < config.elementos.length; j++) {
+          const el1 = config.elementos[i]
+          const el2 = config.elementos[j]
+          if (el1.visible && el2.visible && elementosSeSuperponen(el1, el2)) {
+            haySuperposiciones = true
+            break
+          }
+        }
+        if (haySuperposiciones) break
+      }
+      
+      if (haySuperposiciones) {
+        // Reorganizar automáticamente
+        setTimeout(() => {
+          // Reorganizar elementos
+          setConfig(prev => {
+            const elementos = [...prev.elementos]
+            const margen = prev.margen || 15
+            let yActual = margen
+            const elementosOrdenados = elementos.sort((a, b) => a.y - b.y)
+            
+            elementosOrdenados.forEach(elemento => {
+              if (elemento.visible && elemento.tipo !== 'header') {
+                elemento.y = yActual
+                yActual += elemento.height + 5
+              }
+            })
+            
+            return { ...prev, elementos: elementosOrdenados }
+          })
+          setReorganizadoInicialmente(true)
+        }, 100)
+      } else {
+        setReorganizadoInicialmente(true)
+      }
+    }
+  }, [reorganizadoInicialmente, config.elementos])
+
+  // Manejar eventos de mouse para arrastrar y redimensionar
+  useEffect(() => {
+    if (!arrastrando && !redimensionando) return
+
+    const handleMouseMove = (e) => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+      }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        setConfig(prevConfig => {
+          if (redimensionando && elementoSeleccionado) {
+            const elemento = prevConfig.elementos.find(el => el.id === elementoSeleccionado)
+            if (!elemento || elemento.locked || elemento.tipo === 'tabla') return prevConfig
+
+            const deltaX = (e.clientX - inicioRedimensionamiento.mouseX) / escala
+            const deltaY = (e.clientY - inicioRedimensionamiento.mouseY) / escala
+
+            let nuevaX = inicioRedimensionamiento.x
+            let nuevaY = inicioRedimensionamiento.y
+            let nuevoWidth = inicioRedimensionamiento.width + (redimensionando.includes('e') ? deltaX : redimensionando.includes('w') ? -deltaX : 0)
+            let nuevoHeight = inicioRedimensionamiento.height + (redimensionando.includes('s') ? deltaY : redimensionando.includes('n') ? -deltaY : 0)
+
+            if (redimensionando.includes('w')) nuevaX = inicioRedimensionamiento.x + deltaX
+            if (redimensionando.includes('n')) nuevaY = inicioRedimensionamiento.y + deltaY
+
+            nuevoWidth = Math.max(10, nuevoWidth)
+            nuevoHeight = Math.max(5, nuevoHeight)
+
+            const margen = prevConfig.margen || 15
+            if (nuevaX + nuevoWidth > 210 - margen) nuevoWidth = 210 - margen - nuevaX
+            if (nuevaY + nuevoHeight > 297 - margen) nuevoHeight = 297 - margen - nuevaY
+            if (nuevaX < margen) {
+              nuevoWidth = nuevoWidth - (margen - nuevaX)
+              nuevaX = margen
+            }
+            if (nuevaY < margen) {
+              nuevoHeight = nuevoHeight - (margen - nuevaY)
+              nuevaY = margen
+            }
+
+            if (elemento.tipo === 'header') {
+              nuevaX = 0
+              nuevoWidth = 210
+            }
+
+            return {
+              ...prevConfig,
+              elementos: prevConfig.elementos.map(el =>
+                el.id === elementoSeleccionado
+                  ? { ...el, x: nuevaX, y: nuevaY, width: nuevoWidth, height: nuevoHeight }
+                  : el
+              )
+            }
+          } else if (arrastrando && elementoSeleccionado) {
+            const elemento = prevConfig.elementos.find(el => el.id === elementoSeleccionado)
+            if (!elemento || elemento.locked || elemento.tipo === 'tabla') return prevConfig
+
+            const rect = canvasRef.current?.getBoundingClientRect()
+            if (!rect) return prevConfig
+
+            let x = (e.clientX - rect.left) / escala - offsetArrastre.x
+            let y = (e.clientY - rect.top) / escala - offsetArrastre.y
+
+            if (elemento.tipo === 'header') {
+              x = 0
+              y = 0
+            } else {
+              const margen = prevConfig.margen || 15
+              const maxX = 210 - elemento.width
+              const maxY = 297 - elemento.height
+              x = Math.max(margen, Math.min(maxX - margen, x))
+              y = Math.max(margen, Math.min(maxY - margen, y))
+            }
+
+            return {
+              ...prevConfig,
+              elementos: prevConfig.elementos.map(el =>
+                el.id === elementoSeleccionado ? { ...el, x, y } : el
+              )
+            }
+          }
+          return prevConfig
+        })
+      })
+    }
+
+    const handleMouseUp = () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      setArrastrando(false)
+      setRedimensionando(null)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [arrastrando, redimensionando, elementoSeleccionado, offsetArrastre, inicioRedimensionamiento, escala])
+
+  // ========== FUNCIONES DESPUÉS DE TODOS LOS HOOKS ==========
   // Aplicar una plantilla
   const aplicarPlantilla = (plantilla) => {
     // Convertir headers antiguos al nuevo formato si es necesario
@@ -2617,65 +2921,6 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     localStorage.setItem('cotizacion_plantillas', JSON.stringify(plantillasActualizadas))
     
     alert(`✅ Plantilla duplicada como "${nombreCopia}"`)
-  }
-  
-  // Escala base para mostrar el canvas (A4: 210x297mm)
-  // Escala tamaño real: 1mm = 3.7795275590551px (96 DPI estándar)
-  const escalaBase = 3.7795275590551 // Tamaño real A4: 210mm × 297mm = 794px × 1123px
-  
-  // Calcular zoom máximo disponible basado en el tamaño del contenedor (solo para referencia)
-  const [zoomMaximoDisponible, setZoomMaximoDisponible] = useState(100)
-  
-  useEffect(() => {
-    const calcularZoomMaximo = () => {
-      if (!canvasContainerRef.current) return
-      
-      const container = canvasContainerRef.current
-      const containerWidth = container.clientWidth - 48 // Padding 24px cada lado
-      const containerHeight = container.clientHeight - 48 // Padding 24px cada lado
-      
-      // Dimensiones base de A4 en mm
-      const anchoA4 = 210
-      const altoA4 = 297
-      
-      // Calcular zoom máximo basado en el espacio disponible
-      const zoomPorAncho = (containerWidth / (anchoA4 * escalaBase)) * 100
-      const zoomPorAlto = (containerHeight / (altoA4 * escalaBase)) * 100
-      
-      // Usar el menor para asegurar que quepa completamente
-      const zoomMax = Math.min(zoomPorAncho, zoomPorAlto, 300) // Máximo 300%
-      const zoomMaximo = Math.max(25, Math.floor(zoomMax))
-      setZoomMaximoDisponible(zoomMaximo)
-    }
-    
-    // Calcular después de que el componente se monte
-    const timeoutId = setTimeout(calcularZoomMaximo, 100)
-    window.addEventListener('resize', calcularZoomMaximo)
-    
-    return () => {
-      clearTimeout(timeoutId)
-      window.removeEventListener('resize', calcularZoomMaximo)
-    }
-  }, [])
-  
-  // NO ajustar zoom automáticamente - permitir hasta 100% sin restricciones
-  
-  const escala = escalaBase * (zoom / 100) // Aplicar zoom
-  const anchoCanvas = 210 * escala
-  const altoCanvas = 297 * escala
-  
-  // Funciones de zoom - permitir hasta 100% sin restricciones
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 10, 100)) // Máximo 100%
-  }
-  
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 10, 25)) // Mínimo 25%
-  }
-  
-  const handleZoomReset = () => {
-    // Resetear a 100%
-    setZoom(100)
   }
 
   // Función para detectar si dos elementos se superponen
@@ -3085,199 +3330,6 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
     })
   }
 
-  // Refs para throttling y optimización
-  const rafIdRef = useRef(null)
-  const lastUpdateRef = useRef({ x: null, y: null, width: null, height: null })
-  
-  const handleMouseMove = (e) => {
-    // Cancelar frame anterior si existe
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current)
-    }
-    
-    // Usar requestAnimationFrame para throttling (sincronizado con el refresh rate)
-    rafIdRef.current = requestAnimationFrame(() => {
-      if (redimensionando && elementoSeleccionado) {
-        // Modo redimensionamiento
-        const elemento = config.elementos.find(el => el.id === elementoSeleccionado)
-        if (!elemento || elemento.locked) return
-        
-        const deltaX = (e.clientX - inicioRedimensionamiento.mouseX) / escala
-        const deltaY = (e.clientY - inicioRedimensionamiento.mouseY) / escala
-        
-        let nuevaX = inicioRedimensionamiento.x
-        let nuevaY = inicioRedimensionamiento.y
-        let nuevoWidth = inicioRedimensionamiento.width
-        let nuevoHeight = inicioRedimensionamiento.height
-        
-        // Calcular tamaño mínimo basado en el contenido del texto
-        const tamanoMinimo = calcularTamanoMinimoTexto(elemento)
-        const minWidth = tamanoMinimo.minWidth
-        const minHeight = tamanoMinimo.minHeight
-        
-        // Redimensionar según el handle, respetando el tamaño mínimo del texto
-        if (redimensionando.includes('e')) { // Este (derecha)
-          const nuevoWidthCalculado = inicioRedimensionamiento.width + deltaX
-          nuevoWidth = Math.max(minWidth, nuevoWidthCalculado)
-        }
-        if (redimensionando.includes('w')) { // Oeste (izquierda)
-          const nuevoWidthCalculado = inicioRedimensionamiento.width - deltaX
-          if (nuevoWidthCalculado >= minWidth) {
-            nuevoWidth = nuevoWidthCalculado
-            nuevaX = inicioRedimensionamiento.x + deltaX
-          } else {
-            nuevoWidth = minWidth
-            nuevaX = inicioRedimensionamiento.x + (inicioRedimensionamiento.width - minWidth)
-          }
-        }
-        if (redimensionando.includes('s')) { // Sur (abajo)
-          const nuevoHeightCalculado = inicioRedimensionamiento.height + deltaY
-          nuevoHeight = Math.max(minHeight, nuevoHeightCalculado)
-        }
-        if (redimensionando.includes('n')) { // Norte (arriba)
-          const nuevoHeightCalculado = inicioRedimensionamiento.height - deltaY
-          if (nuevoHeightCalculado >= minHeight) {
-            nuevoHeight = nuevoHeightCalculado
-            nuevaY = inicioRedimensionamiento.y + deltaY
-          } else {
-            nuevoHeight = minHeight
-            nuevaY = inicioRedimensionamiento.y + (inicioRedimensionamiento.height - minHeight)
-          }
-        }
-        
-        nuevoWidth = Math.max(minWidth, nuevoWidth)
-        nuevoHeight = Math.max(minHeight, nuevoHeight)
-        
-        const margen = config.margen || 15
-        if (nuevaX + nuevoWidth > 210 - margen) {
-          nuevoWidth = 210 - margen - nuevaX
-        }
-        if (nuevaY + nuevoHeight > 297 - margen) {
-          nuevoHeight = 297 - margen - nuevaY
-        }
-        if (nuevaX < margen) {
-          nuevoWidth = nuevoWidth - (margen - nuevaX)
-          nuevaX = margen
-        }
-        if (nuevaY < margen) {
-          nuevoHeight = nuevoHeight - (margen - nuevaY)
-          nuevaY = margen
-        }
-        
-        if (elemento.tipo === 'header') {
-          nuevaX = 0
-          nuevoWidth = 210
-        }
-        
-        if (elemento.tipo === 'tabla') {
-          return
-        }
-        
-        // Solo actualizar si hay cambios significativos (umbral de 0.5mm)
-        const lastUpdate = lastUpdateRef.current
-        const hayCambio = Math.abs(lastUpdate.x - nuevaX) > 0.5 || 
-                         Math.abs(lastUpdate.y - nuevaY) > 0.5 ||
-                         Math.abs(lastUpdate.width - nuevoWidth) > 0.5 ||
-                         Math.abs(lastUpdate.height - nuevoHeight) > 0.5
-        
-        if (hayCambio) {
-          lastUpdateRef.current = { x: nuevaX, y: nuevaY, width: nuevoWidth, height: nuevoHeight }
-          actualizarElemento(elementoSeleccionado, { x: nuevaX, y: nuevaY, width: nuevoWidth, height: nuevoHeight })
-        }
-      } else if (arrastrando && elementoSeleccionado) {
-        // Modo arrastre
-        const elemento = config.elementos.find(el => el.id === elementoSeleccionado)
-        if (!elemento || elemento.locked) return
-        
-        if (elemento.tipo === 'tabla') {
-          return
-        }
-        
-        const rect = canvasRef.current.getBoundingClientRect()
-        let x = (e.clientX - rect.left) / escala - offsetArrastre.x
-        let y = (e.clientY - rect.top) / escala - offsetArrastre.y
-        
-        if (elemento.tipo === 'header') {
-          x = 0
-          y = 0
-        } else {
-          const margen = config.margen || 15
-          const maxX = 210 - elemento.width
-          const maxY = 297 - elemento.height
-          x = Math.max(margen, Math.min(maxX - margen, x))
-          y = Math.max(margen, Math.min(maxY - margen, y))
-        }
-
-        // Solo actualizar si hay cambios significativos (umbral de 0.5mm)
-        const lastUpdate = lastUpdateRef.current
-        const hayCambio = Math.abs(lastUpdate.x - x) > 0.5 || Math.abs(lastUpdate.y - y) > 0.5
-        
-        if (hayCambio) {
-          lastUpdateRef.current = { x, y, width: elemento.width, height: elemento.height }
-          actualizarElemento(elementoSeleccionado, { x, y })
-        }
-      }
-    })
-  }
-
-  const handleMouseUp = () => {
-    // Cancelar cualquier frame pendiente
-    if (rafIdRef.current) {
-      cancelAnimationFrame(rafIdRef.current)
-      rafIdRef.current = null
-    }
-    // Resetear último update
-    lastUpdateRef.current = { x: null, y: null, width: null, height: null }
-    setArrastrando(false)
-    setRedimensionando(null)
-  }
-
-  useEffect(() => {
-    if (arrastrando || redimensionando) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
-    }
-  }, [arrastrando, redimensionando, elementoSeleccionado, offsetArrastre, inicioRedimensionamiento])
-
-
-  // Memoizar elementoActual para evitar buscar en cada render
-  const elementoActual = useMemo(() => {
-    return config.elementos.find(el => el.id === elementoSeleccionado)
-  }, [config.elementos, elementoSeleccionado])
-
-  // Reorganizar automáticamente al cargar si hay superposiciones
-  useEffect(() => {
-    if (!reorganizadoInicialmente && config.elementos && config.elementos.length > 0) {
-      // Verificar si hay superposiciones
-      let haySuperposiciones = false
-      for (let i = 0; i < config.elementos.length; i++) {
-        for (let j = i + 1; j < config.elementos.length; j++) {
-          const el1 = config.elementos[i]
-          const el2 = config.elementos[j]
-          if (el1.visible && el2.visible && elementosSeSuperponen(el1, el2)) {
-            haySuperposiciones = true
-            break
-          }
-        }
-        if (haySuperposiciones) break
-      }
-      
-      if (haySuperposiciones) {
-        // Reorganizar automáticamente
-        setTimeout(() => {
-          reorganizarElementos()
-          setReorganizadoInicialmente(true)
-        }, 100)
-      } else {
-        setReorganizadoInicialmente(true)
-      }
-    }
-  }, [reorganizadoInicialmente]) // Solo ejecutar una vez al montar
-
   // Función para mostrar texto como plantilla (sin reemplazar variables)
   const mostrarTextoPlantilla = (texto) => {
     if (!texto) return ''
@@ -3359,7 +3411,7 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                 <ZoomOut size={16} className="sm:w-[18px] sm:h-[18px]" style={{ color: '#000000', stroke: '#000000' }} />
               </button>
               <span className="px-1 sm:px-2 text-xs sm:text-sm font-medium min-w-[40px] sm:min-w-[50px] text-center" style={{ color: 'var(--color-text)', fontWeight: 600 }}>
-                {zoom}%
+                {zoomDisplay}%
               </span>
               <button
                 onClick={handleZoomIn}
@@ -3509,7 +3561,7 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
             <div className="relative" style={{ paddingTop: '25px', maxWidth: '100%', overflow: 'auto' }}>
               {/* Información de dimensiones */}
               <div className="absolute -top-5 sm:-top-6 left-0 text-xs sm:text-sm text-gray-700 font-medium bg-white px-2 sm:px-3 py-0.5 sm:py-1 rounded shadow-sm">
-                A4: 210×297mm ({zoom}%)
+                A4: 210×297mm ({zoomDisplay}%)
               </div>
               <div
                 ref={canvasRef}
@@ -3520,10 +3572,11 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                   cursor: arrastrando ? 'grabbing' : 'default',
                   minWidth: `${anchoCanvas}px`,
                   minHeight: `${altoCanvas}px`,
-                  backgroundColor: '#ffffff'
+                  backgroundColor: '#ffffff',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)', // Aceleración por hardware
+                  backfaceVisibility: 'hidden' // Optimización de renderizado
                 }}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
                 onClick={(e) => {
                   // Si se hace clic directamente en el canvas (no en un elemento), deseleccionar
                   // Solo deseleccionar si no se está arrastrando ni redimensionando
@@ -3538,7 +3591,7 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                 }}
               >
                 {/* Regla con marcas de margen */}
-                {mostrarRegla && config.margen > 0 && (
+                {mostrarRegla && config.margen > 0 && !isZooming && (
                   <>
                     {/* Regla horizontal (arriba) - fuera del canvas */}
                     <div 
@@ -3551,39 +3604,34 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                         fontSize: `${8 * escala}px`
                       }}
                     >
-                      {/* Marcas de milímetros en la regla horizontal */}
-                      {Array.from({ length: Math.floor(210 / 10) + 1 }, (_, i) => {
-                        const mm = i * 10
-                        const x = mm * escala
-                        const esMargen = mm === config.margen || mm === (210 - config.margen)
-                        return (
-                          <div
-                            key={`h-${mm}`}
-                            className="absolute"
-                            style={{
-                              left: `${x}px`,
-                              top: '0',
-                              width: '1px',
-                              height: `${esMargen ? 30 * escala : 15 * escala}px`,
-                              backgroundColor: esMargen ? '#ef4444' : '#666',
-                              zIndex: 51
-                            }}
-                          >
-                            {mm % 50 === 0 && (
-                              <span 
-                                className="absolute -top-4 left-0 text-xs font-medium"
-                                style={{ 
-                                  color: '#333',
-                                  transform: 'translateX(-50%)',
-                                  fontSize: `${7 * escala}px`
-                                }}
-                              >
-                                {mm}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
+                      {/* Marcas de milímetros en la regla horizontal - memoizado */}
+                      {reglasHorizontalesMemo.map(({ mm, x, esMargen }) => (
+                        <div
+                          key={`h-${mm}`}
+                          className="absolute"
+                          style={{
+                            left: `${x}px`,
+                            top: '0',
+                            width: '1px',
+                            height: `${esMargen ? 30 * escala : 15 * escala}px`,
+                            backgroundColor: esMargen ? '#ef4444' : '#666',
+                            zIndex: 51
+                          }}
+                        >
+                          {mm % 50 === 0 && (
+                            <span 
+                              className="absolute -top-4 left-0 text-xs font-medium"
+                              style={{ 
+                                color: '#333',
+                                transform: 'translateX(-50%)',
+                                fontSize: `${7 * escala}px`
+                              }}
+                            >
+                              {mm}
+                            </span>
+                          )}
+                        </div>
+                      ))}
                       {/* Línea de margen izquierdo */}
                       <div
                         className="absolute top-0"
@@ -3619,40 +3667,35 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                         fontSize: `${8 * escala}px`
                       }}
                     >
-                      {/* Marcas de milímetros en la regla vertical */}
-                      {Array.from({ length: Math.floor(297 / 10) + 1 }, (_, i) => {
-                        const mm = i * 10
-                        const y = mm * escala
-                        const esMargen = mm === config.margen || mm === (297 - config.margen)
-                        return (
-                          <div
-                            key={`v-${mm}`}
-                            className="absolute"
-                            style={{
-                              top: `${y}px`,
-                              left: '0',
-                              height: '1px',
-                              width: `${esMargen ? 30 * escala : 15 * escala}px`,
-                              backgroundColor: esMargen ? '#ef4444' : '#666',
-                              zIndex: 51
-                            }}
-                          >
-                            {mm % 50 === 0 && (
-                              <span 
-                                className="absolute -left-6 top-0 text-xs font-medium"
-                                style={{ 
-                                  color: '#333',
-                                  transform: 'rotate(-90deg)',
-                                  transformOrigin: 'center',
-                                  fontSize: `${7 * escala}px`
-                                }}
-                              >
-                                {mm}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
+                      {/* Marcas de milímetros en la regla vertical - memoizado */}
+                      {reglasVerticalesMemo.map(({ mm, y, esMargen }) => (
+                        <div
+                          key={`v-${mm}`}
+                          className="absolute"
+                          style={{
+                            top: `${y}px`,
+                            left: '0',
+                            height: '1px',
+                            width: `${esMargen ? 30 * escala : 15 * escala}px`,
+                            backgroundColor: esMargen ? '#ef4444' : '#666',
+                            zIndex: 51
+                          }}
+                        >
+                          {mm % 50 === 0 && (
+                            <span 
+                              className="absolute -left-6 top-0 text-xs font-medium"
+                              style={{ 
+                                color: '#333',
+                                transform: 'rotate(-90deg)',
+                                transformOrigin: 'center',
+                                fontSize: `${7 * escala}px`
+                              }}
+                            >
+                              {mm}
+                            </span>
+                          )}
+                        </div>
+                      ))}
                       {/* Línea de margen superior */}
                       <div
                         className="absolute left-0"
@@ -3698,25 +3741,24 @@ const ModalConfiguracionPDF = ({ configuracion, onClose, onSave }) => {
                   const tituloEl = config.elementos.find(e => e.id === 'titulo')
                   const subtituloEl = config.elementos.find(e => e.id === 'subtitulo' && e.visible)
                   
-                  const elementosFiltrados = useMemo(() => {
-                    return config.elementos
-                      .filter(el => {
-                        // Ocultar título y subtítulo si están dentro del área del header
-                        if ((el.id === 'titulo' || el.id === 'subtitulo') && el.visible && header) {
-                          return false
-                        }
-                        return el.visible
-                      })
-                      .sort((a, b) => {
-                        // Headers primero (z-index más bajo), luego otros elementos
-                        if (a.tipo === 'header' && b.tipo !== 'header') return -1
-                        if (a.tipo !== 'header' && b.tipo === 'header') return 1
-                        // Dentro del mismo tipo, ordenar por Y
-                        return a.y - b.y
-                      })
-                  }, [config.elementos, header])
+                  // Filtrar y ordenar elementos para renderizado
+                  const elementosParaRender = config.elementos
+                    .filter(el => {
+                      // Ocultar título y subtítulo si están dentro del área del header
+                      if ((el.id === 'titulo' || el.id === 'subtitulo') && el.visible && header) {
+                        return false
+                      }
+                      return el.visible
+                    })
+                    .sort((a, b) => {
+                      // Headers primero (z-index más bajo), luego otros elementos
+                      if (a.tipo === 'header' && b.tipo !== 'header') return -1
+                      if (a.tipo !== 'header' && b.tipo === 'header') return 1
+                      // Dentro del mismo tipo, ordenar por Y
+                      return a.y - b.y
+                    })
                   
-                  return elementosFiltrados.map((elemento, index) => {
+                  return elementosParaRender.map((elemento, index) => {
                   const estaSeleccionado = elementoSeleccionado === elemento.id
                   // z-index: headers más bajo, elementos seleccionados más alto
                   const zIndex = elemento.tipo === 'header' ? 1 : estaSeleccionado ? 100 : 10 + index
@@ -6432,6 +6474,235 @@ const ModalNuevoCliente = ({ onClose, onSave }) => {
               </button>
             </div>
           </div>
+    </div>
+  )
+}
+
+// Componente Modal de Lector de Imagen OCR
+const ModalOCR = ({ onClose, onProcess }) => {
+  const [imagen, setImagen] = useState(null)
+  const [imagenPreview, setImagenPreview] = useState(null)
+  const [procesando, setProcesando] = useState(false)
+  const [resultadoOCR, setResultadoOCR] = useState(null)
+  const fileInputRef = useRef(null)
+
+  const handleSeleccionarImagen = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        setImagen(file)
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setImagenPreview(reader.result)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        alert('Por favor selecciona un archivo de imagen válido')
+      }
+    }
+  }
+
+  const handleProcesarOCR = async () => {
+    if (!imagen) {
+      alert('Por favor selecciona una imagen primero')
+      return
+    }
+
+    setProcesando(true)
+    try {
+      // TODO: Integrar con servicio de OCR (Tesseract.js, Google Vision API, etc.)
+      // Por ahora, simulamos el procesamiento
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Simulación de datos extraídos
+      const datosSimulados = {
+        cliente: 'Cliente Extraído',
+        fecha: getCurrentDateSync(),
+        productos: [
+          { nombre: 'Producto 1', cantidad: 2, precio: 100 },
+          { nombre: 'Producto 2', cantidad: 1, precio: 200 }
+        ],
+        total: 400
+      }
+      
+      setResultadoOCR(datosSimulados)
+      alert('✅ Imagen procesada exitosamente. Los datos extraídos se mostrarán a continuación.')
+    } catch (error) {
+      console.error('Error al procesar OCR:', error)
+      alert('Error al procesar la imagen. Por favor, intenta nuevamente.')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  const handleUsarDatos = () => {
+    if (resultadoOCR) {
+      onProcess(resultadoOCR)
+    }
+  }
+
+  const handleLimpiar = () => {
+    setImagen(null)
+    setImagenPreview(null)
+    setResultadoOCR(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        style={{ backgroundColor: 'var(--color-surface)', color: 'var(--color-text)' }}
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex items-center gap-3">
+            <Scan size={24} style={{ color: 'var(--color-primary-600)' }} />
+            <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
+              Lector de Imagen OCR
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Contenido */}
+        <div className="p-6 space-y-6">
+          {/* Instrucciones */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4" style={{ backgroundColor: 'var(--color-primary-50)', borderColor: 'var(--color-primary-200)' }}>
+            <p className="text-sm" style={{ color: 'var(--color-text)' }}>
+              <strong>Instrucciones:</strong> Sube una imagen de una cotización o factura. El sistema extraerá automáticamente los datos como cliente, productos, precios y totales.
+            </p>
+          </div>
+
+          {/* Selector de imagen */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+              Seleccionar Imagen
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleSeleccionarImagen}
+                className="hidden"
+                id="ocr-image-input"
+              />
+              <label
+                htmlFor="ocr-image-input"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors flex items-center gap-2"
+              >
+                <Image size={18} />
+                Seleccionar Imagen
+              </label>
+              {imagen && (
+                <button
+                  onClick={handleLimpiar}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+                >
+                  <X size={18} />
+                  Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Preview de imagen */}
+          {imagenPreview && (
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text)' }}>
+                Vista Previa
+              </label>
+              <div className="border rounded-lg p-4 flex justify-center" style={{ borderColor: 'var(--color-border)' }}>
+                <img
+                  src={imagenPreview}
+                  alt="Preview"
+                  className="max-w-full max-h-64 rounded-lg"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Botón de procesar */}
+          {imagen && !resultadoOCR && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleProcesarOCR}
+                disabled={procesando}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {procesando ? (
+                  <>
+                    <RotateCcw size={18} className="animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Scan size={18} />
+                    Procesar Imagen
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Resultado del OCR */}
+          {resultadoOCR && (
+            <div className="border rounded-lg p-4" style={{ borderColor: 'var(--color-border)' }}>
+              <h3 className="font-semibold mb-3" style={{ color: 'var(--color-text)' }}>
+                Datos Extraídos:
+              </h3>
+              <div className="space-y-2 text-sm">
+                <p><strong>Cliente:</strong> {resultadoOCR.cliente}</p>
+                <p><strong>Fecha:</strong> {formatDate(resultadoOCR.fecha)}</p>
+                <p><strong>Productos:</strong></p>
+                <ul className="list-disc list-inside ml-4">
+                  {resultadoOCR.productos?.map((p, i) => (
+                    <li key={i}>
+                      {p.nombre} - Cantidad: {p.cantidad} - Precio: S/ {p.precio}
+                    </li>
+                  ))}
+                </ul>
+                <p><strong>Total:</strong> S/ {resultadoOCR.total}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t flex justify-end gap-3" style={{ borderColor: 'var(--color-border)' }}>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            Cancelar
+          </button>
+          {resultadoOCR && (
+            <button
+              onClick={handleUsarDatos}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Crear Cotización con estos Datos
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

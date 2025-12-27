@@ -1,4 +1,4 @@
-# Cubic CRM
+# Qubit CRM
 
 Sistema CRM completo desarrollado con React, Vite y Firebase. Incluye gestión de productos, clientes, ventas, marketing digital y más.
 
@@ -35,8 +35,8 @@ Sistema CRM completo desarrollado con React, Vite y Firebase. Incluye gestión d
 
 1. **Clonar el repositorio**
 ```bash
-git clone https://github.com/tu-usuario/cubic-crm.git
-cd cubic-crm
+git clone https://github.com/tu-usuario/qubit-crm.git
+cd qubit-crm
 ```
 
 2. **Instalar dependencias**
