@@ -1648,47 +1648,6 @@ const CompanyModal = ({ company, formData, setFormData, onSave, onClose }) => {
             </div>
           </div>
 
-          <div className="border-t pt-4">
-            <h3 className="font-medium mb-3">Límites</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Max Usuarios</label>
-                <input
-                  type="number"
-                  value={formData.limites.maxUsuarios}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    limites: { ...formData.limites, maxUsuarios: parseInt(e.target.value) }
-                  })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Max Ventas</label>
-                <input
-                  type="number"
-                  value={formData.limites.maxVentas}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    limites: { ...formData.limites, maxVentas: parseInt(e.target.value) }
-                  })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Max Productos</label>
-                <input
-                  type="number"
-                  value={formData.limites.maxProductos}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    limites: { ...formData.limites, maxProductos: parseInt(e.target.value) }
-                  })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="px-6 py-4 border-t flex justify-end gap-3">
