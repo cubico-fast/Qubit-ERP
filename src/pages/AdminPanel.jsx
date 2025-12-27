@@ -71,6 +71,9 @@ const AdminPanel = () => {
   const [companyForm, setCompanyForm] = useState({
     companyId: '',
     nombre: '',
+    ruc: '',
+    country: 'Perú',
+    currency: 'PEN',
     descripcion: '',
     activa: true,
     plan: 'gratis', // gratis, basico, premium
@@ -227,7 +230,10 @@ const AdminPanel = () => {
     setEditingCompany(company)
     setCompanyForm({
       companyId: company.companyId,
-      nombre: company.nombre || '',
+      nombre: company.nombre || company.name || '',
+      ruc: company.ruc || '',
+      country: company.country || company.pais || 'Perú',
+      currency: company.currency || company.moneda || 'PEN',
       descripcion: company.descripcion || '',
       activa: company.activa !== false,
       plan: company.plan || 'gratis',
@@ -251,10 +257,13 @@ const AdminPanel = () => {
   const handleSaveCompanyName = async (newName) => {
     try {
       if (!currentCompany) {
-        // Si no hay empresa, crear una nueva
+        // Si no hay empresa, crear una nueva con datos básicos
         await createOrUpdateCompany({
           companyId: companyId,
           nombre: newName,
+          ruc: '',
+          country: 'Perú',
+          currency: 'PEN',
           activa: true,
           plan: 'gratis',
           limites: {
@@ -267,7 +276,8 @@ const AdminPanel = () => {
         // Actualizar empresa existente
         await createOrUpdateCompany({
           ...currentCompany,
-          nombre: newName
+          nombre: newName,
+          name: newName // También actualizar el campo 'name' para compatibilidad
         })
       }
       await loadData()
@@ -462,6 +472,9 @@ const AdminPanel = () => {
     setCompanyForm({
       companyId: '',
       nombre: '',
+      ruc: '',
+      country: 'Perú',
+      currency: 'PEN',
       descripcion: '',
       activa: true,
       plan: 'gratis',
@@ -1528,20 +1541,73 @@ const CompanyModal = ({ company, formData, setFormData, onSave, onClose }) => {
               value={formData.companyId}
               onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
               className="w-full px-3 py-2 border rounded-lg"
+              placeholder="ej: mi_empresa_001"
               required
               disabled={!!company}
             />
+            <p className="text-xs text-gray-500 mt-1">ID único para identificar tu empresa (sin espacios, usar guiones bajos)</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Nombre *</label>
+            <label className="block text-sm font-medium mb-1">Nombre de la Empresa *</label>
             <input
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
               className="w-full px-3 py-2 border rounded-lg"
+              placeholder="Mi Empresa S.A.C."
               required
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">RUC</label>
+              <input
+                type="text"
+                value={formData.ruc}
+                onChange={(e) => setFormData({ ...formData, ruc: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg"
+                placeholder="20123456789"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">País *</label>
+              <select
+                value={formData.country}
+                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg"
+                required
+              >
+                <option value="Perú">Perú</option>
+                <option value="México">México</option>
+                <option value="Colombia">Colombia</option>
+                <option value="Chile">Chile</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Ecuador">Ecuador</option>
+                <option value="Estados Unidos">Estados Unidos</option>
+                <option value="España">España</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Moneda *</label>
+            <select
+              value={formData.currency}
+              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg"
+              required
+            >
+              <option value="PEN">Soles (PEN)</option>
+              <option value="USD">Dólares (USD)</option>
+              <option value="MXN">Pesos Mexicanos (MXN)</option>
+              <option value="COP">Pesos Colombianos (COP)</option>
+              <option value="CLP">Pesos Chilenos (CLP)</option>
+              <option value="ARS">Pesos Argentinos (ARS)</option>
+            </select>
           </div>
 
           <div>
@@ -1551,6 +1617,7 @@ const CompanyModal = ({ company, formData, setFormData, onSave, onClose }) => {
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               className="w-full px-3 py-2 border rounded-lg"
               rows="3"
+              placeholder="Descripción de la empresa..."
             />
           </div>
 
