@@ -183,7 +183,34 @@ const AdminPanel = () => {
 
   const handleCreateCompany = async () => {
     try {
-      await createOrUpdateCompany(companyForm)
+      // Validar que el nombre y companyId estén presentes
+      if (!formData.nombre || !formData.nombre.trim()) {
+        alert('❌ Por favor ingresa el nombre de la empresa')
+        return
+      }
+      
+      // Asegurar que el companyId esté generado
+      if (!formData.companyId || !formData.companyId.trim()) {
+        // Generar companyId si no existe
+        const generatedId = formData.nombre
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '_')
+          .replace(/[^a-z0-9_]/g, '')
+          .replace(/_+/g, '_')
+          .replace(/^_+|_+$/g, '')
+        
+        if (!generatedId) {
+          alert('❌ El nombre de la empresa debe contener al menos un carácter válido')
+          return
+        }
+        
+        setCompanyForm({ ...formData, companyId: generatedId })
+        await createOrUpdateCompany({ ...formData, companyId: generatedId })
+      } else {
+        await createOrUpdateCompany(companyForm)
+      }
+      
       alert('✅ Empresa creada exitosamente')
       setShowCompanyModal(false)
       resetCompanyForm()
@@ -1521,6 +1548,40 @@ const AdminPanel = () => {
 
 // Modal para crear/editar empresa
 const CompanyModal = ({ company, formData, setFormData, onSave, onClose }) => {
+  // Función para generar Company ID automáticamente desde el nombre
+  const generateCompanyId = (nombre) => {
+    if (!nombre) return ''
+    
+    // Convertir a minúsculas
+    let id = nombre.toLowerCase()
+    
+    // Reemplazar espacios por guiones bajos
+    id = id.replace(/\s+/g, '_')
+    
+    // Eliminar caracteres especiales excepto guiones bajos y guiones
+    id = id.replace(/[^a-z0-9_-]/g, '')
+    
+    // Eliminar múltiples guiones bajos consecutivos
+    id = id.replace(/_+/g, '_')
+    
+    // Eliminar guiones bajos al inicio y final
+    id = id.replace(/^_+|_+$/g, '')
+    
+    return id
+  }
+
+  // Manejar cambio en el nombre de la empresa
+  const handleNombreChange = (e) => {
+    const nuevoNombre = e.target.value
+    const nuevoCompanyId = company ? formData.companyId : generateCompanyId(nuevoNombre)
+    
+    setFormData({ 
+      ...formData, 
+      nombre: nuevoNombre,
+      companyId: nuevoCompanyId
+    })
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -1535,29 +1596,33 @@ const CompanyModal = ({ company, formData, setFormData, onSave, onClose }) => {
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Company ID *</label>
-            <input
-              type="text"
-              value={formData.companyId}
-              onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-              className="w-full px-3 py-2 border rounded-lg"
-              placeholder="ej: mi_empresa_001"
-              required
-              disabled={!!company}
-            />
-            <p className="text-xs text-gray-500 mt-1">ID único para identificar tu empresa (sin espacios, usar guiones bajos)</p>
-          </div>
-
-          <div>
             <label className="block text-sm font-medium mb-1">Nombre de la Empresa *</label>
             <input
               type="text"
               value={formData.nombre}
-              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              onChange={handleNombreChange}
               className="w-full px-3 py-2 border rounded-lg"
               placeholder="Mi Empresa S.A.C."
               required
+              autoFocus
             />
+            <p className="text-xs text-gray-500 mt-1">El Company ID se generará automáticamente basado en el nombre</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Company ID *</label>
+            <input
+              type="text"
+              value={formData.companyId}
+              className="w-full px-3 py-2 border rounded-lg bg-gray-100"
+              placeholder="Se generará automáticamente"
+              required
+              disabled
+              readOnly
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              ID generado automáticamente desde el nombre (los espacios se reemplazan por guiones bajos)
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
